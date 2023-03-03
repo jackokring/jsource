@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 echo "entering `pwd`"
 
 jplatform64=$(./jplatform64.sh)
+MAKEFLAGS=j1
 
 if [ "" = "$CFLAGS" ]; then
  # OPTLEVEL will be merged back into CFLAGS, further down
