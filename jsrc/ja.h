@@ -390,7 +390,6 @@
 #define fauxvirtual(z,v,w,r,c) {if(likely((r)<=4)){z=ABACK(w); AK((A)(v))=(CAV(w)-(C*)(v)); AT((A)(v))=AT(w); AR((A)(v))=(RANKT)(r); z=AFLAG(w)&AFVIRTUAL?z:(w); \
                               AFLAG((A)(v))=AFVIRTUAL|AFUNINCORPABLE|(AFLAG(z)&AFPRISTINE)|(AT(w)&TRAVERSIBLE); ABACK((A)(v))=z; z=(A)(v); ACFAUX(z,(c))} \
                               else{RZ(z=virtual((w),0,(r))); AFLAGORLOCAL(z,AFUNINCORPABLE) if((c)!=ACUC1)ACINIT(z,(c))} }
-// obsolete #define fdef(x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11)     jtfdef(jt,(x0),(x1),(x2),(x3),(x4),(x5),(x6),(x7),(x8),(x9),(x10),(x11))
 // for function definition we don't call a subroutine, because that results in pushing all the arguments, popping them, and storing them back.
 // furthermore, we do better to allocate the block early, before the fill has been calculated so that (1) values can be dropped in as they are calculated (2) there is no
 // register-destroying subroutine call at the end of the function using fdef
@@ -420,11 +419,7 @@ AT(fffz)=(ffft); AFLAGINIT(fffz,(ffft)&RECURSIBLE); /* install actual type.  Wai
 #define fdef(flag2,id,t,f1,f2,fs,gs,hs,flag,m,l,r) ({A fffz; fdefallo(fffz) fdeffill(fffz,flag2,id,t,f1,f2,fs,gs,hs,flag,m,l,r) fffz;})  // we no longer check error.  This cannot return 0
 #define fdefnoerr(flag2,id,t,f1,f2,fs,gs,hs,flag,m,l,r) ({A fffz; GAT0E(fffz,INT,(VERBSIZE+SZI-1)>>LGSZI,0,goto retpoint) fdeffill(fffz,flag2,id,t,f1,f2,fs,gs,hs,flag,m,l,r) retpoint:; fffz;})  // this version returns 0 if allocation error
 
-#if !USECSTACK
-#define fdep(x)                     jtfdep(jt,(x))
-#else
 #define fdep(x)                     0
-#endif
 #define fdepger(x)                  jtfdepger(jt,(x))
 #define filler(x)                   jtfiller(jt,(x))  
 #define fillv0(x)               jtfillv0(jt,(x))
@@ -432,7 +427,6 @@ AT(fffz)=(ffft); AFLAGINIT(fffz,(ffft)&RECURSIBLE); /* install actual type.  Wai
 // x is locale number, result is address of symbol table, or 0 if nonexistent locale
 // only for non-reuse #define findnlz(x,z)                {if((UI)(n)>=jt->numlocsize)z=0; else {z=(A)(jt->numloctbl[n]); z=((UI)((I*)z-jt->numloctbl)<jt->numlocsize)?0:z;}}
 #define fit(x,y)                    jtfit(jt,(x),(y))
-// obsolete #define fitct(x,y,n)                jtfitct(jt,(x),(y),(n)) 
 #define fix(x,y)                    jtfix(jt,(x),(y))
 #define fixa(x,y)                   jtfixa(jt,(x),(y))
 #define fixrecursive(x,y)           jtfixrecursive(jt,(x),(y))
@@ -639,9 +633,6 @@ extern void jfree4gmp(void*,size_t);
 #define jsig(x,y)                   jtjsig(jt,(x),(y))
 #define jsigd(x)                    jtjsigd(jt,(x))
 #define jsignal(x)                  jtjsignal(jt,(x))
-#if 0 // obsolete
-#define jsignalf(x,y...)            jtjsignalf(jt,(x),y)
-#endif
 #define jsignal3(x,y,z)             jtjsignal3(jt,(x),(y),(z))
 #define jsigstr(x,y,z)              jtjsigstr(jt,(x),(y),(z))
 #define jstd(x,y,z)                 jtjstd(jt,(x),(y),(z))
@@ -937,11 +928,7 @@ extern void jfree4gmp(void*,size_t);
 #define ranec(x0,x1,x2,x3,x4,x5)    jtranec(jt,(x0),(x1),(x2),(x3),(x4),(x5))
 #define rank1ex(x0,x1,x2,x3)        jtrank1ex(jt,(x0),(x1),(x2),(x3))
 #define rank1ex0(x0,x1,x2)          jtrank1ex0(jt,(x0),(x1),(x2))
-#if 1
 #define REX2R(lr,rr,lcr,rcr)        (((UI)(lr)<<RANKTX)+(UI)(rr)+((((UI)(lcr)<<RANKTX)+(UI)(rcr))<<RANK2TX))
-#else  // obsolete
-#define REX2R(lr,rr,lcr,rcr)        (((I)(lr)<<RANKTX)+(I)(rr)),(((I)(lcr)<<RANKTX)+(I)(rcr))
-#endif
 #define rank2ex(x0,x1,x2,x3,x4,x5,x6,x7)  jtrank2ex(jt,(x0),(x1),(x2),REX2R((x3),(x4),(x5),(x6)),(x7))
 #define rank2exip(x0,x1,x2,x3,x4,x5,x6,x7)  jtrank2ex(jtinplace,(x0),(x1),(x2),REX2R((x3),(x4),(x5),(x6)),(x7))
 #define rank2ex0(x0,x1,x2,x3)       jtrank2ex0(jt,(x0),(x1),(x2),(x3))

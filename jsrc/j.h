@@ -291,7 +291,6 @@ static inline omp_int_t omp_get_num_threads() { return 1;}
 #define uncommon(x) (!!(x))
 #endif
 
-#if 1
 #include <stdint.h>
 #include <float.h>
 #include <limits.h>
@@ -303,9 +302,6 @@ static inline omp_int_t omp_get_num_threads() { return 1;}
 #include <stdlib.h>
 #undef link
 #undef qdiv
-#else
-#define const /*nothing*/   /* blame rx.h */
-#endif
 
 #if ! SY_WINCE
 #include <errno.h>
@@ -359,10 +355,10 @@ static inline omp_int_t omp_get_num_threads() { return 1;}
 #define IMIN            (~2147483647L)   /* ANSI C LONG_MIN is  -LONG_MAX */
 #define FLIMAX          ((D)IMAX+0.4)     // largest FL value that can be converted to I
 #define FLIMIN          ((D)IMIN)  // smallest FL value that can be converted to I
-#define FMTI            "%li"
-#define FMTI02          "%02li"
-#define FMTI04          "%04li"
-#define FMTI05          "%05li"
+#define FMTI            "%d"
+#define FMTI02          "%02d"
+#define FMTI04          "%04d"
+#define FMTI05          "%05d"
 #define strtoI          strtol
 #endif
 
@@ -455,12 +451,16 @@ static inline omp_int_t omp_get_num_threads() { return 1;}
 #define RESTRICTF __declspec(restrict)
 #define PREFETCH(x) _mm_prefetch((x),_MM_HINT_T0)
 #define PREFETCH2(x) _mm_prefetch((x),_MM_HINT_T1)   // prefetch into L2 cache but not L1
-#endif
-#ifdef __GNUC__
+#elif defined(__GNUC__)
 #define RESTRICT __restrict
-// No RESTRICTF on GCC
+#define RESTRICTF __attribute__((malloc))
 #define PREFETCH(x) __builtin_prefetch(x)
 #define PREFETCH2(x) __builtin_prefetch((x),0,2)   // prefetch into L2 cache but not L1
+#else
+#define RESTRICT
+#define RESTRICTF
+#define PREFETCH(x)
+#define PREFETCH2(x)
 #endif
 
 #ifdef __MINGW32__
@@ -477,7 +477,11 @@ extern int __cdecl _isnan (double);
 extern unsigned int __cdecl _clearfp (void);
 #endif
 #ifndef _MAX_PATH
+#ifdef PATH_MAX
+#define _MAX_PATH  PATH_MAX
+#else
 #define _MAX_PATH  (260)
+#endif
 #endif
 #endif
 
@@ -532,7 +536,7 @@ struct jtimespec jmtfclk(void); //'fast clock'; maybe less inaccurate; intended 
 #if C_USEMULTINTRINSIC
 #if !defined(MMSC_VER)
 #if defined(__clang__)
-#if !__has_builtin(__builtin_smull_overflow)
+#if !__has_builtin(__builtin_smul_overflow)
 #undef C_USEMULTINTRINSIC
 #define C_USEMULTINTRINSIC 0
 #endif
@@ -566,13 +570,11 @@ struct jtimespec jmtfclk(void); //'fast clock'; maybe less inaccurate; intended 
 #define NPATH           1024            /* max length for path names,      */
                                         /* including trailing 0 byte       */
 // Now we are trying to watch the C stack directly
-#define USECSTACK       1   // 0 to go back to counting J recursions
-#if USECSTACK
-// NEW WAY
+
 // The named-call stack is used only when there is a locative, EXCEPT that after a call to 18!:4 it is used until the function calling 18!:4 returns.
 // Since startup calls 18!:4 without a name, we have to allow for the possibility of deep recursion in the name stack.  Normally only a little of the stack is used
 #if defined(_WIN32)
-#define CSTACKSIZE      (SY_64?12009472:1015808)  // size we allocate in the calling function, aligned to 16k system page size
+#define CSTACKSIZE      (SY_64?12009472:1015808)  // size we allocate in the calling function, aligned to 16k system page size  9961472 for 10MB
 #else
 #if (defined(ANDROID) && !defined(__LP64__)) || (defined(__OpenBSD__) && defined(__aarch64__))
 #define CSTACKSIZE      (SY_64?4194304:1015808)  // OS default stack size 4MB, aligned to 16k system page size
@@ -581,15 +583,6 @@ struct jtimespec jmtfclk(void); //'fast clock'; maybe less inaccurate; intended 
 #endif
 #endif
 #define CSTACKRESERVE   100000  // amount we allow for slop before we sample the stackpointer, and after the last check
-#else
-// OBSOLETE OLD WAY (with USECSTACK off)
-// Sizes for the internal stacks.  The goal here is to detect a runaway recursion before it creates a segfault.  This cannot
-// be done with precision because we don't know how much C stack we have, or how much is used by a recursion (and anyway it depends on
-// what J functions are running).
-// There are two limits: maximum depth of J functions, and maximum depth of named functions.
-// increase OS stack limit instead of restricting NFDEP/NFCALL
-#define NFDEP           2000L  // 4000             // fn call depth - for debug builds, must be small (<0xa00) to avoid stack overflow, even smaller for non-AVX
-#endif 
 //The named-function stack is intelligent
 // and stacks only when there is a locale change or deletion; it almost never limits unless locatives are used to an extreme degree.
 // The depth of the C stack will normally limit stack use.
@@ -683,9 +676,9 @@ struct jtimespec jmtfclk(void); //'fast clock'; maybe less inaccurate; intended 
 #define LGBW (LGSZI+LGBB)  // lg (# bits in a word)
 
 // nominal cache sizes for current processors
-#define L1CACHESIZE (((I)1)<<15)
-#define L2CACHESIZE (((I)1)<<18)
-#define L3CACHESIZE (((I)1)<<22)
+#define L1CACHESIZE (((I)1)<<15) // 32k
+#define L2CACHESIZE (((I)1)<<20) // 1m
+#define L3CACHESIZE (((I)1)<<22) // 4m
 
 #define TOOMANYATOMSX 47  // more atoms than this is considered overflow (64-bit).  i.-family can't handle more than 2G cells in array.
 
@@ -882,20 +875,6 @@ struct jtimespec jmtfclk(void); //'fast clock'; maybe less inaccurate; intended 
 
 #define A0              0   // a nonexistent A-block
 #define ABS(a)          (0<=(a)?(a):-(a))
-#if 0   // obsolete
-// support for eformat_j_
-// Put the appropriate macro at the start of any routine that will do ASSERTE.
-// the piece at the beginning of the routine will vector off to ASSERTE, passing in the error code, the ranks, the original self, and the args
-// The EFORMAT macro must follow PREFIP.  The args are the ranks
-#define ESECT(callstg) if(0){eformat: R jtjsignale callstg;}
-#define EFORMAT1(m) A origw=w, origself=self; ESECT((jt,(R2MAX<<RANK2TX)|m,origself,0,origw))
-#define EFORMAT2(l,r) A origa=a, origw=w, origself=self; ESECT((jt,(R2MAX<<RANK2TX)|((I)l<<RANKTX)|r,origself,origa,origw))
-#define EFORMAT1IRS(m) A origw=w, origself=self; RANK2T origr=jt->ranks;  ESECT((jt,(origr<<RANK2TX)|m,origself,0,origw))  // use when verb supports IRS
-#define EFORMAT2IRSCOMMON(l,r,irsr) A origa=a, origw=w, origself=self; RANK2T origr=irsr;  ESECT((jt,(origr<<RANK2TX)|((I)l<<RANKTX)|r,origself,origa,origw))
-#define EFORMAT2IRS(l,r) EFORMAT2IRSCOMMON(l,r,jt->ranks)
-#define ASSERTE(b,e) {if(unlikely(!(b))){jt=(J)((I)jt+e); goto eformat;}}
-#define ASSERTF(b,e,s...){if(unlikely(!(b))){R jtjsignale((J)((I)jt+e),0,0,0,0);}}
-#endif
 #include "jr0.h" // #define ASSERT(b,e) {if(unlikely(!(b))){jsignal(e); R 0;}}
 #define ASSERTF(b,e,s...)     {if(unlikely(!(b))){jsignal(e); R 0;}}
 #define ASSERTSUFF(b,e,suff)   {if(unlikely(!(b))){jsignal(e); {suff}}}  // when the cleanup is more than a goto
@@ -963,9 +942,7 @@ struct jtimespec jmtfclk(void); //'fast clock'; maybe less inaccurate; intended 
   }else{r=memcmp(aaa,aab,aai<<LGSZI)!=0;} \
  }
 #endif
-// obsolete #define ASSERTAGREE(x,y,l) ASSERTAGREE2(x,y,l,l,l)
 #define ASSERTAGREE(x,y,l) ASSERTAGREECOMMON(x,y,l,ASSERT)
-// obsolete #define ASSERTEAGREE(x,y,l) ASSERTAGREECOMMON(x,y,l,ASSERTE)
 #define ASSERTAGREESEGFAULT (x,y,l) {I *aaa=(x), *aab=(y), aai=(l)-1; do{aab=aai<0?aaa:aab; if(aaa[aai]!=aab[aai])SEGFAULT; --aai; aab=aai<0?aaa:aab; if(aaa[aai]!=aab[aai])SEGFAULT; --aai;}while(aai>=0); }
 // BETWEENx requires that lo be <= hi
 #define BETWEENC(x,lo,hi) ((UI)((x)-(lo))<=(UI)((hi)-(lo)))   // x is in [lo,hi]
@@ -1009,11 +986,6 @@ struct jtimespec jmtfclk(void); //'fast clock'; maybe less inaccurate; intended 
 #define CALL2COMMON(f,a,w,fs,j,pop)   ({A carg1=(a), carg2=(w), carg3=(A)(fs), cargz; cargz=(f)(j,carg1,carg2,carg3); pop if(unlikely(cargz==0)){if(AT(carg3)!=0)jteformat(j,carg3,carg1,carg2,0);} cargz;})
 #define CALL2(f,a,w,fs)   CALL2COMMON(f,a,w,fs,jt,)
 #define CALL2IP(f,a,w,fs)   CALL2COMMON(f,a,w,fs,jtinplace,)
-// obsolete #define CALL1(f,w,fs)   ((f)(jt,    (w),(A)(fs),(A)(fs)))
-// obsolete #define CALL2(f,a,w,fs) ((f)(jt,(a),(w),(A)(fs)))
-// obsolete #define CALL1IP(f,w,fs)   ({A carg1=(w), carg3=(A)(fs), cargz; cargz=(f)(jtinplace,carg1,carg3,carg3); if(unlikely(cargz==0)){if(AT(carg3)!=0)jteformat(jtinplace,carg3,carg1,0,0);} cargz;})
-// obsolete // obsolete #define CALL2IP(f,a,w,fs) ((f)(jtinplace,(a),(w),(A)(fs)))
-// obsolete #define CALL2IP(f,a,w,fs)   ({A carg1=(a), carg2=(w), carg3=(A)(fs), cargz; cargz=(f)(jtinplace,carg1,carg2,carg3); if(unlikely(cargz==0)){if(AT(carg3)!=0)jteformat(jtinplace,carg3,carg1,carg2,0);} cargz;})
 #define RETARG(z)       (z)   // These places were ca(z) in the original JE
 #define CALLSTACKRESET(jm)  {jm->callstacknext=0; jm->uflags.bstkreqd = 0;} // establish initial conditions for things that might not get processed off the stack.  The last things stacked may never be popped
 #define MODESRESET(jm)      {jm->xmode=XMEXACT;}  // anything that might get left in a bad state and should be reset on return to immediate mode
@@ -1058,16 +1030,10 @@ struct jtimespec jmtfclk(void); //'fast clock'; maybe less inaccurate; intended 
 // define fs block used in every/every2.  It is the self for the f in f&.>, and contains only function pointers, an optional param in AK, and the flag field
 #define EVERYFS(name,f0,f1,akparm,flg) PRIM name={{akparm,0,0,0,0,0,0},{.primvb={.valencefns={f0,f1},.flag=flg}}};
 
-#if USECSTACK  // obsolete, always
 #define FDEPDEC(d)
 #define FDEPINC(d)
 #define STACKCHKOFL {D stackpos; ASSERT((uintptr_t)&stackpos>=jt->cstackmin,EVSTACK);}
 #define STACKCHKOFLSUFF(suff) {D stackpos; ASSERTSUFF((uintptr_t)&stackpos>=jt->cstackmin,EVSTACK,suff);}
-#else  // old style counting J recursion levels
-#define FDEPDEC(d)      jt->fdepi-=(I4)(d)  // can be used in conditional expressions
-#define FDEPINC(d)      {ASSERT(jt->fdepn>=jt->fdepi+(I4)(d),EVSTACK); jt->fdepi+=(I4)(d);}
-#define STACKVERIFY
-#endif
 #define FCONS(x)        fdef(0,CFCONS,VERB,jtnum1,jtnum2,0L,0L,(x),VJTFLGOK1+VIRS1+VASGSAFE, RMAX,RMAX,RMAX)  // used for _9: to 9:
 // fuzzy-equal is used for tolerant comparisons not related to jt->cct; for example testing whether x in x { y is an integer
 #define FUZZ            0.000000000000056843418860808015   // tolerance
@@ -1486,7 +1452,6 @@ if(likely(!((I)jtinplace&JTWILLBEOPENED)))z=EPILOGNORET(z); RETF(z); \
 #define IRS2COMMON(j,a,w,fs,l,r,f2,z) (jt->ranks=(RANK2T)(((((I)AR(a)-(l)>0)?(l):RMAX)<<RANKTX)+(((I)AR(w)-(r)>0)?(r):RMAX)),z=((AF)(f2))(j,(a),(w),(A)(fs)),jt->ranks=R2MAX,z) // nonneg rank
 #define IRS2(a,w,fs,l,r,f2,z) IRS2COMMON(jt,a,w,fs,l,r,f2,z)
 #define IRSIP2(a,w,fs,l,r,f2,z) IRS2COMMON(jtinplace,a,w,fs,l,r,f2,z)
-// obsolete #define IRS2AGREE(a,w,fs,l,r,f2,z) {I fl=(I)AR(a)-(l); fl=MAX(0,fl); I fr=(I)AR(w)-(r); fr=MAX(0,fr); ASSERTAGREE2(AS(a),AS(w),MIN(fl,fr),fl,fr) IRS2COMMON(jt,(a),(w),fs,(l),(r),(f2),z); } // nonneg rank; check agreement first
 // no longer used #define IRS2AGREE(a,w,fs,l,r,f2,z) {I fl=(I)AR(a)-(l); fl=fl<0?0:fl; I fr=(I)AR(w)-(r); fr=fr<0?0:fr; fl=fr<fl?fr:fl; ASSERTAGREE(AS(a),AS(w),fl) IRS2COMMON(jt,(a),(w),fs,(l),(r),(f2),z); } // nonneg rank; check agreement first
 // call to atomic2(), similar to IRS2.  fs is a local block to use to hold the rank (declared as D fs[16]), cxx is the Cxx value of the function to be called
 #define ATOMIC2(jt,a,w,fs,l,r,cxx) (FAV((A)(fs))->fgh[0]=ds(cxx), FAV((A)(fs))->id=CQQ, FAV((A)(fs))->lc=FAV(ds(cxx))->lc, FAV((A)(fs))->lrr=(RANK2T)((l)<<RANKTX)+(r), jtatomic2(jt,(a),(w),(A)fs))
@@ -1970,12 +1935,10 @@ if(likely(type _i<3)){z=(I)&oneone; z=type _i>1?(I)_zzt:z; _zzt=type _i<1?(I*)z:
 #define RESETERR        RESETERRT(jt)
 #define RESETERRC       {jt->jerr=0; jt->etxn=MIN(jt->etxn,0);}  // clear error; clear error text too, but not if frozen.  Used only when formatting ARs
 #define RESETERRNO      {jt->jerr=0;jt->emsgstate&=~(EMSGSTATEFORMATTED|EMSGSTATEPAREN);}  // reset the number but not the message; used in adverse/throw. to keep the user's message
-// obsolete #define RESETERRANDMSG  {jt->etxn1=jt->etxn=jt->jerr=0;jt->emsgstate&=0x7f;}
 #define RESETRANK       (jt->ranks=R2MAX)
 #define RZSUFF(exp,suff) {if(unlikely(!(exp))){suff}}
 #define RZ(exp)         RZSUFF(exp,R0)
 #define RZQ(exp)         RZSUFF(exp,R 0;)  // allows FINDNULLRET without jt
-// obsolete #define RE(exp)         {if(unlikely(((exp),jt->jerr!=0)))R 0;}
 #define RE(exp)         RZ(((exp),jt->jerr==0))  // execute exp, then return if error
 #define RZGOTO(exp,lbl) RZSUFF(exp,goto lbl;)
 #define RNE(exp)        {R unlikely(jt->jerr!=0)?0:(exp);}  // always return, with exp if no error, 0 if error
@@ -2430,9 +2393,9 @@ static inline UINT _clearfp(void){int r=fetestexcept(FE_ALL_EXCEPT);
 #define DPMULD(x,y,z,s) _p = __emul(x,y); z=(I)_p; if((_p+0x80000000U)>0xFFFFFFFFU){s}
 #else
 #define DPMULDECLS
-#define DPMUL(x,y,z,s) if(__builtin_smull_overflow(x,y,z)){s}
+#define DPMUL(x,y,z,s) if(__builtin_smul_overflow(x,y,z)){s}
 #define DPMULDDECLS
-#define DPMULD(x,y,z,s) if(__builtin_smull_overflow(x,y,&z)){s}
+#define DPMULD(x,y,z,s) if(__builtin_smul_overflow(x,y,&z)){s}
 #endif
 #else // C_USEMULTINTRINSIC 0 - use standard-C version (32-bit)
 #define DPMULDECLS D _p;

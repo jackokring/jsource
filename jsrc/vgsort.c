@@ -57,7 +57,6 @@ static const US orderfromcomp5[1024] = {
 
 // Comparison functions.  Do one comparison before the loop for a fast exit if it differs.
 // On VS this sequence, where a single byte is returned, creates a CMP/JE/SETL sequence, performing only one (fused) compare
-// obsolete // #define COMPGRADE(T,t) T av=*a, bv=*b; if(av!=bv) R av t bv; while(--n){++a; ++b; av=*a, bv=*b; if(av!=bv) R av t bv;} R a<b;
 #define COMPGRADE(T,t) do{T av=*a, bv=*b; if(av!=bv) R av t bv; if(!--n)break; ++a; ++b;}while(1); R 1;
 static __forceinline B compiu(I n, I *a, I *b){COMPGRADE(I,<)}
 static __forceinline B compid(I n, I *a, I *b){COMPGRADE(I,>)}
@@ -247,10 +246,13 @@ static SF(jtsorti1){F1PREFJT;A x,y,z;I*wv;I i,*xv,*zv;void *yv;
  R z;
 }    /* w grade"r w on large-range integers */
 
+//todo should use for avx2 too
+//maybe even swar??
+#if !C_AVX512
 // sort a single integer list using quicksort without misprediction, inplace
 #define SORTQCOND ((C_AVX2&&SY_64) || EMU_AVX2)
-#define SORTQNAME sortiq1
-#define SORTQTYPE I
+#define SORTQNAME vvsortqs8ai
+#define SORTQTYPE IL
 #define SORTQSCOPE
 #define SORTQSET256 _mm256_set_epi64x
 #define SORTQTYPE256 __m256i
@@ -262,14 +264,37 @@ static SF(jtsorti1){F1PREFJT;A x,y,z;I*wv;I i,*xv,*zv;void *yv;
 #define SORTQULOADTYPE __m256i*
 #include "vgsortq.h"
 
+#define SORTQCOND 0 //todo--avx2 vectorised version wants 8-byte quantities so disable for now.  Fine as should switch to 
+#define SORTQNAME vvsortqs4ai
+#define SORTQTYPE I4
+#define SORTQSCOPE
+#define SORTQSET256 _mm256_set_epi32
+#define SORTQTYPE256 __m256i
+#define SORTQCASTTOPD _mm256_castsi256_pd
+#define SORTQCMP256 _mm256_cmpgt_epi32
+#define SORTQCMPTYPE 
+#define SORTQMASKLOAD _mm256_maskload_epi32
+#define SORTQULOAD _mm256_loadu_si256
+#define SORTQULOADTYPE __m256i*
+#include "vgsortq.h"
+// scaf
+void vvsortqs8ao(IL *z,IL *w,I n){ memcpy(z,w,8*n); vvsortqs8ai(z,n); }
+void vvsortqs4ao(I4 *z,I4 *w,I n){ memcpy(z,w,4*n); vvsortqs4ai(z,n); }
+#endif
+
+
 // JTDESCEND set in jt
 static SF(jtsortiq){F1PREFIP;  // m=#sorts, n=#items in each sort, w is block
- A z; 
- if(ASGNINPLACESGN(SGNIF((I)jtinplace,JTINPLACEWX),w))z=w; else RZ(z=ca(w));   // output area, possibly the same as the input
- I *zv=IAV(z); DQ(m, sortiq1(zv,n); if((I)jtinplace&JTDESCEND){I *zv1=zv; I *zv2=zv+n; DQ(n>>1, I t=*zv1; *zv1++=*--zv2; *zv2=t;)} zv+=n;)  // sort each list (ascending); reverse if descending
- RETF(z);
-}
-
+ A z;I inplace=ASGNINPLACESGN(SGNIF((I)jtinplace,JTINPLACEWX),w); //inplace sort?
+ if(inplace)z=w;
+ else GA(z,AT(w),AN(w),AR(w),AS(w));
+ I *zv=IAV(z),*wv=IAV(w);
+ DQ(m,
+  if(inplace)vvsortqiai(zv,n);
+  else vvsortqiao(zv,wv,n),wv+=n;
+  if((I)jtinplace&JTDESCEND){I *zv1=zv; I *zv2=zv+n; DQ(n>>1, I t=*zv1; *zv1++=*--zv2; *zv2=t;)} //scaf strawman reverse if desc
+  zv+=n;)
+ RETF(z);}
 
 static SF(jtsorti){F1PREFIP;A y,z;I i;UI4 *yv;I j,s,*wv,*zv;
  wv=AV(w);
@@ -282,7 +307,6 @@ static SF(jtsorti){F1PREFIP;A y,z;I i;UI4 *yv;I j,s,*wv,*zv;
   lzn=lzn*709-1006633;  // 0.0108333 2^.x - 0.06, binary point at 24
   nrange=16777216/lzn;  // 1/lzn, binary point back to 0
  }else{nrange=n<=1023?25:2;}  // for small or large, use limit.  On the high end we don't want to run out of memory
-// obsolete  I nrange=(n>=800)+(n>=50000)+(n>=600000)+(n>=1000000);  // TUNE
  CR rng = condrange(wv,AN(w),IMAX,IMIN,n*nrange); // see if smallrange allowed
  // smallrange always wins if applicable
  if(!rng.range){  // range was too large

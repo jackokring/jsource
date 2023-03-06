@@ -18,8 +18,6 @@
 #endif
 
 #if SY_64
-typedef long long          A1;
-typedef unsigned long long BT;
 typedef long long          I;
 typedef long long          SB;
 typedef unsigned long long UI;
@@ -30,11 +28,9 @@ typedef long long          IL;
 #define NANFLAG 0x7ff28da91LL  // signaling NaN with a particular value
 
 #else
-typedef long               A1;
-typedef unsigned long      BT;
-typedef long               I;
-typedef long               SB;
-typedef unsigned long      UI;
+typedef int                I;
+typedef int                SB;
+typedef unsigned int       UI;
 typedef unsigned long long UIL;
 typedef long long          IL;
 #endif
@@ -193,7 +189,7 @@ struct AD {
 #endif
  US h;   // reserved for allocator.  Not used for AFNJA memory
  UC filler;
- RANKT r;  // rank
+ RANKT r;  // rank  Used as flags in SYMB types (i. e. locales)
 #endif
  I s[1];   // shape starts here.  NOTE!! s[0] is always OK to fetch.  We allocate 8 words minimum and s[0] is the last.
   // when AFUNIFORMITEMS is set, s[0] holds the number of items in the raze of the block
@@ -479,7 +475,7 @@ typedef I SI;
 #define SGNIFDENSE(t)   (~(t))  // set sign bit if t is dense
 #define ISDENSE(t)      ((t)>=0)  // true if dense
 // Modifiers that operate on subarrays do so with virtual blocks, and those blocks may be marked as inplaceable if the backing block is inplaceable.
-// The inplaceability applies to the data area, but not necessarily to the block header: if UNINCORPORABLE is set, the header must not be modified (we clone the header in that case)
+// The inplaceability applies to the data area, but not necessarily to the block header: if UNINCORPORABLE is set, the header must not be modified (we clonevirtual() the header in that case)
 // For speedy singletons, there is the additional problem that the operation expects always to write a FL value to the result area, which is OK for any
 // real block but not for an inplaced virtual block, whose virtual data may be shorter than a FL.  The pure solution would be for the singleton code
 // to refrain from modifying a virtual block that is shorter than a FL, but that means we would have to test for it for every arithmetic operation.  Thus
@@ -549,7 +545,6 @@ typedef I SI;
 #define ACSETPERM(x)    {AC(x)=ACPERMANENT+100000; __atomic_fetch_or(&AFLAG(x),(AT(x)&RECURSIBLE),__ATOMIC_ACQ_REL);}  // Make a block permanent from now on.  In case other threads have committed to changing the usecount, make it permanent with a margin of safety
 #define SGNIFPRISTINABLE(c) ((c)+ACPERMANENT)  // sign is set if this block is OK in a PRISTINE boxed noun
 // same, but s is an expression that is neg if it's OK to inplace
-// obsolete #define ASGNINPLACESGN(s,w)  (((s)&AC(w))<0 || ((s)<0)&&jt->zombieval==w)  // OK to inplace ordinary operation  scaf could improve?
 #define ASGNINPLACESGN(s,w)  (((s)&(AC(w)|SGNIF(jt->zombieval==w,0)))<0)   // OK to inplace ordinary operation
 #define ASGNINPLACESGNNJA(s,w)  ASGNINPLACESGN(s,w)  // OK to inplace ordinary operation
 // define virtreqd and set it to 0 to start
@@ -579,7 +574,8 @@ typedef I SI;
 #define AFUNIFORMITEMS  ((I)1<<AFUNIFORMITEMSX)  // It is known that this boxed array has contents whose items are of uniform shape and type; the total number of those items is in AM (so this block cannot be virtual)
 #define AFUNINCORPABLEX SBTX      // matches SBTX 16
 #define AFUNINCORPABLE  ((I)1<<AFUNINCORPABLEX)  // (used in result.h) this block is a virtual block used for subarray tracking and must not
-                                // ever be put into a boxed array, even if WILLBEOPENED is set, because it changes.  AFVIRTUAL must also be set
+                                // ever be put into a boxed array, even if WILLBEOPENED is set, because it changes.  AFVIRTUAL must also be set.  If this block is
+                                // inplaceable, the data may be overwritten but the header must not be: clonevirtual() in that case to get a modifiable header
 #define AFVIRTUALX      C2TX      // matches C2TX 17
 #define AFVIRTUAL       ((I)1<<AFVIRTUALX)  // this block is a VIRTUAL block: a subsequence of another block.  The data pointer points to the actual data, and the
                                  // m field points to the start of the block containing the actual data.  A VIRTUAL block cannot be incorporated into another block, and it
@@ -637,9 +633,8 @@ typedef I SI;
 // rank flags in the AR field of symbol tables.  The allocated rank is always 0
 #define ARNAMEDX 0   // set in the rank of a named locale table.  This bit is passed in the return from jtsyrd1
 #define ARNAMED ((I)1<<ARNAMEDX)   // set in the rank of a named locale table.  This bit is passed in the return from jtsyrd1
+// bit 1 not used
 // the rest of the flags apply only to local symbol tables
-#define ARNAMEADDEDX LPERMANENTX  // 2 Set in rank when a new name is added to the local symbol table.  We transfer the bit from the L flags to the rank-flag
-#define ARNAMEADDED (1LL<<ARNAMEADDEDX)
 #define ARLCLONEDX NMSHAREDX  // 4 set if this is a cloned local symbol table (in which symbol numbers are invalid)
 #define ARLCLONED (1LL<<ARLCLONEDX)  // set if this is a cloned local symbol table (in which symbol numbers are invalid)
 #define ARHASACVX 3   // set if this local symbol table contains an ACV
@@ -647,6 +642,8 @@ typedef I SI;
 #define ARLOCALTABLE 16  // Set in rank of all local symbol tables.  This indicates that the first hashchain holds x/y info and should not be freed as a symbol
 #define ARLSYMINUSE 32  // This bit is set in the rank of the original local symbol table when it is in use
 #define ARINVALID 64  // This (named or numbered) symbol table was never filled in and must not be analyzed when freed
+#define ARNAMEADDEDX 7  // 128 Set in rank when a new name is added to the local symbol table.  We transfer the bit from the L flags to the rank-flag.  Keep as sign bit
+#define ARNAMEADDED (1LL<<ARNAMEADDEDX)
 
 #define SFNSIMPLEONLY 1   // to sfn: return simple name only, discarding any locative
 

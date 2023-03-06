@@ -164,7 +164,6 @@ static const __attribute__((aligned(CACHELINESIZE))) UI4 ptcol[16] = {
 static DF2(jtisf){RZ(symbisdel(onm(a),CALL1(FAV(self)->valencefns[0],w,0L),ABACK(self))); R num(0);} 
 
 // assignment, single or multiple
-// pt0 i the PT code for the left-hand side, pt0 is the PT code for the assigptnment, m is the token number to be assigned next (0 if the next thing is MASK)
 // jt has flag set for final assignment (passed into symbis)
 // The return must be 0 for bad, anything else for good
 static I NOINLINE jtis(J jt,A n,A v,A symtab){F1PREFIP;
@@ -173,7 +172,7 @@ static I NOINLINE jtis(J jt,A n,A v,A symtab){F1PREFIP;
   // string assignment, where the NAME blocks have already been computed.  Use them.  The fast case is where we are assigning a boxed list
   if(AN(n)==1)n=AAV(n)[0];  // if there is only 1 name, treat this like simple assignment to first box, fall through
   else{
-   // True multiple assignment
+   // multiple assignment to fixed names
    ASSERT((-(AR(v))&(-(AN(n)^AS(v)[0])))>=0,EVLENGTH);   // v is atom, or length matches n
    if(((AR(v)^1)+(~AT(v)&BOX))==0){A *nv=AAV(n), *vv=AAV(v); DO(AN(n), jtsymbis(jtinplace,nv[i],C(vv[i]),symtab);)}  // v is boxed list
    else {A *nv=AAV(n); DO(AN(n), jtsymbis((J)((I)jtinplace|JTFINALASGN),nv[i],ope(AR(v)?from(sc(i),v):v),symtab);)}  // repeat atomic v for each name, otherwise select item.  Open in either case; always final assignment
@@ -192,7 +191,7 @@ static I NOINLINE jtis(J jt,A n,A v,A symtab){F1PREFIP;
   }
  }
  // if simple assignment to a name (normal case), do it.  To get here it must have been a length-1 list of names
- if(unlikely((NAME&AT(n))!=0)){
+ if(likely((NAME&AT(n))!=0)){
 #if FORCEVIRTUALINPUTS
    // When forcing everything virtual, there is a problem with jtcasev, which converts its sentence to an inplace special.
    // The problem is that when the result is set to virtual, its backer does not appear in the NVR stack, and when the reassignment is
@@ -202,7 +201,7 @@ static I NOINLINE jtis(J jt,A n,A v,A symtab){F1PREFIP;
 #endif
   jtsymbis(jtinplace,n,v,symtab);
  }else{
-  // computed name(s)
+  // computed name(s), now boxed character strings
   ASSERT(AN(n)||(AR(v)&&!AS(v)[0]),EVILNAME);  // error if namelist empty or multiple assignment to no names, if there is something to be assigned
   // otherwise, if it's an assignment to an atomic computed name, convert the string to a name and do the single assignment
   if(!AR(n))jtsymbis(jtinplace,onm(n),v,symtab);
@@ -214,7 +213,8 @@ static I NOINLINE jtis(J jt,A n,A v,A symtab){F1PREFIP;
    ASSERT(1==AR(n),EVRANK); ASSERT(AT(v)&NOUN,EVDOMAIN);
    // create faux fs to pass args to the multiple-assignment function, in AM and valencefns.  AT must be 0 for eformat, too
    PRIM asgfs; ABACK((A)&asgfs)=symtab; AT((A)&asgfs)=0; FAV((A)&asgfs)->flag2=0; FAV((A)&asgfs)->valencefns[0]=ger?jtfxx:jtope;   // pass in the symtab to assign, and whether w must be converted from AR.  flag2 must be 0 to satisfy rank2ex
-   I rr=AR(v)-1; rr&=~REPSGN(rr); rank2ex(n,v,(A)&asgfs,0,rr,0,rr,jtisf);
+   I rr=AR(v)-1; rr&=~REPSGN(rr); rank2ex(n,v,(A)&asgfs,0,rr,0,rr,jtisf); 
+   if(unlikely(jt->jerr==EVLENGTH))jteformat(jt,0,str(strlen("number of assigned names does not match number of values"),"number of assigned names does not match number of values"),0,0);
   }
  }
 retstack:  // return, but 0 if error
@@ -470,19 +470,21 @@ A jtparsea(J jt, A *queue, I nwds){F1PREFIP;PSTK *stack;A z,*v;
   //  (exec) 23-24,26 VJTFLGOK1+VJTFLGOK2+VASGSAFE from verb flags 27 PTNOTLPARX set if stack[0] is not (
   //         25 set if first stack word AFTER the executing fragment is NOT MARK (i. e. there are executions remaining on the stack) 
   //  (name resolution) 23-26  free
-  //  (exec) 20-22 savearea for pmask for lines 0-2  (stack) 17,20 flags from at NAMEBYVALUE/NAMEABANDON, 21 flag to indicate global symbol table used
-  //  18-19 AR flags from symtab
-  //  16 set if value has been added to NVR stack
+  //  (exec) 20-22 savearea for pmask for lines 0-2  (stack) 17,20 flags from at NAMEBYVALUE/NAMEABANDON
+// obsolete , 21 flag to indicate global symbol table used
+  //  19 free
+  //  18   AR flag from symtab
+  //  16 free
   //  0-15 m (word# in sentence)
 #define NOTFINALEXECX 25  // bit must be >= VJTFLGOK2X and less than 32+PTISCAVNX, because we test values 
 #define NOTFINALEXEC (1LL<<NOTFINALEXECX)
-#define LOCSYMFLGX (18-ARNAMEADDEDX)
+#define LOCSYMFLGX (18-ARLCLONEDX)  // add LOCSYMFLGX to AR*X to get to the flag bit in pt0ecam
 #define PLINESAVEX 20  // 3 bits of pline
-// above #define USEDGLOBALX 21
-// above #define USEDGLOBAL (1LL<<USEDGLOBALX)
+// obsolete #define USEDGLOBALX 21
+// obsolete #define USEDGLOBAL (1LL<<USEDGLOBALX)
 #define NAMEFLAGSX 17  // 17 and 20
-#define NVRSTACKEDX 16
-#define NVRSTACKED (1LL<<NVRSTACKEDX)
+// obsolete #define NVRSTACKEDX 16
+// obsolete #define NVRSTACKED (1LL<<NVRSTACKEDX)
   // STACK0PT needs only enough info to decode from position 0.  It persists into the execution phase
 #if SY_64
 #define SETSTACK0PT(v) pt0ecam=(UI4)pt0ecam, pt0ecam|=(I)(v)<<32;
@@ -495,7 +497,7 @@ A jtparsea(J jt, A *queue, I nwds){F1PREFIP;PSTK *stack;A z,*v;
 #define STACK0PTISCAVN (PTISCAVN(stack0pt)<<(NOTFINALEXECX+1-PTISCAVNX))  // move the bit to above NOTFINALX
 #endif
   jt->parserstackframe.parseroridetok=0xffff;  // indicate no pee/syrd error has occurred
-  UI pt0ecam = (AR(jt->locsyms)&(ARLCLONED|ARNAMEADDED))<<LOCSYMFLGX;  // insert clone/added flags into portmanteau vbl.  locsyms cannot change during this execution
+  UI pt0ecam = (AR(jt->locsyms)&ARLCLONED)<<LOCSYMFLGX;  // insert clone/added flags into portmanteau vbl.  locsyms cannot change during this execution
 
   queue+=nwds-1;  // Advance queueptr to last token.  It always points to the next value to fetch.
 
@@ -553,8 +555,7 @@ A jtparsea(J jt, A *queue, I nwds){F1PREFIP;PSTK *stack;A z,*v;
       I4 symx, buck;
       symx=NAV(QCWORD(y))->symx; buck=NAV(QCWORD(y))->bucket;
       L *sympv=SYMORIGIN;  // fetch the base of the symbol table.  This can't change between executions but there's no benefit in fetching earlier
-      I bx=NAVV(QCWORD(y))->bucketx;  // get an early fetch in case we don't have a symbol but we do have buckets - globals, mainly
-      pt0ecam&=~(NAMEBYVALUE+NAMEABANDON)>>(NAMEBYVALUEX-NAMEFLAGSX);
+      pt0ecam&=~(NAMEBYVALUE+NAMEABANDON)>>(NAMEBYVALUEX-NAMEFLAGSX);  // install name-status flags from y
       pt0ecam|=((I)y&(QCNAMEABANDON+QCNAMEBYVALUE))<<NAMEFLAGSX;
       y=QCWORD(y);  // back y up to the NAME block
       if((symx&~REPSGN4(SGNIF4(pt0ecam,LOCSYMFLGX+ARLCLONEDX)))!=0){  // if we are using primary table and there is a symbol stored there...
@@ -562,10 +563,13 @@ A jtparsea(J jt, A *queue, I nwds){F1PREFIP;PSTK *stack;A z,*v;
        if(unlikely(s->valtype==0))goto rdglob;  // if value has not been assigned, ignore it.  Could just treat as undef
        y=(A)((I)s->val+s->valtype);  //  combine the type and value.  type has QCGLOBAL semantics, as y does.
        raposlocalqcgsv(s->val,s->valtype,y);  // ra() the value to match syrd.  type has global flag clear
-      }else if(likely(buck!=0)){  // buckets but no symbol - must be global, or recursive symtab - but not synthetic name
-       if((bx|SGNIF(pt0ecam,ARNAMEADDEDX+LOCSYMFLGX))>=0)goto rdglob;  // if positive bucketx and no name has been added, skip the search - the usual case if not recursive symtab
+      }else if(likely(buck!=0)){  // buckets but no symbol - must be global, or recursive symtab - but not synthetic new name
+       I bx=NAVV(y)->bucketx;  // get an early fetch in case we don't have a symbol but we do have buckets - globals, mainly
+// obsolete        if(likely((bx|SGNIF(pt0ecam,ARNAMEADDEDX+LOCSYMFLGX))>=0))goto rdglob;  // if positive bucketx and no name has been added, skip the search - the usual case if not recursive symtab
+       if(likely((bx|(I)(I1)AR(jt->locsyms))>=0))goto rdglob;  // if positive bucketx and no name has been added, skip the search - the usual case if not recursive symtab
+       // negative bucket (indicating exactly where the name is) or some name has been added to this symtab.  We have to probe the local table
        if((y=probelocalbuckets(sympv,y,LXAV0(jt->locsyms)[buck],bx))==0){y=QCWORD(*(volatile A*)queue);goto rdglob;}  // see if there is a local symbol, using the buckets.  If not, restore y
-       raposlocalqcgsv(QCWORD(y),QCPTYPE(y),y);  // ra() the value to match syrd
+       raposlocalqcgsv(QCWORD(y),QCPTYPE(y),y);  // value found in local table.  ra() the value to match syrd
       }else{
        // No bucket info.  Usually this is a locative/global, but it could be an explicit modifier, console level, or ".
 rdglob: ;  // here when we tried the buckets and failed
@@ -759,7 +763,6 @@ RECURSIVERESULTSCHECK
         jteformat(jt,jt->parserstackframe.sf,QCWORD(stack[(pmask+1)&3].a),QCWORD(pmask&4?stack[3].a:0),0);
         FP
        }
-// obsolete       FPZ(y);
 #if AUDITEXECRESULTS
        auditblock(jt,y,1,1);
 #endif
@@ -869,7 +872,6 @@ RECURSIVERESULTSCHECK
         jteformat(jt,fs,QCWORD(stack[1].a),QCWORD(pmask&2?stack[3].a:0),0);
         FP
        }
-// obsolete        FPZ(yy);    // fail parse if error.  All FAOWED names must stay on the stack until we know it is safe to delete them
 #if AUDITEXECRESULTS
        auditblock(jt,yy,1,1);
 #endif
@@ -906,15 +908,6 @@ RECURSIVERESULTSCHECK
        auditmemchains();
 #endif
        CLEARZOMBIE   // in case assignsym was set, clear it until next use
-// obsolete        if(unlikely(rc==0))FP  // fail parse if error.
-// obsolete {
-// obsolete         // except for catastrophic errors, the only things that can happen in an assignment are domain (assignment to global when local is defined) and agreement (multiple assignment)
-// obsolete         // The agreement is self-explanatory, but we put out a message for the domain error, provided it is an assignment to a valid non-locative
-// obsolete         A assignand=QCWORD(stack[0].a);
-// obsolete         if(jt->jerr==EVDOMAIN && GETSTACK0PT&PTNAME0 && !(NAV(assignand)->flag&NMLOC+NMILOC+NMIMPLOC))
-// obsolete jteformat(jt,0,str(strlen("public assignment to a name with a private value"),"public assignment to a name with a private value"),0,0);
-// obsolete         FP
-// obsolete        }
        FPZ(rc)  // fail if error.  
        // it impossible for the stack to be executable.  If there are no more words, the sentence is finished.
        // If FAOWED was in the value, the result needs to inherit it.  But since we retain the same stack position as the result of the assignment, nothing more is needed.

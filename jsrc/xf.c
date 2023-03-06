@@ -8,6 +8,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <winbase.h>
+#define filesep '\\'
 #else
 #if defined(__GNUC__) && defined(_GNU_SOURCE)
 #include <dlfcn.h>
@@ -15,6 +16,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fts.h>
+#define filesep '/'
 #ifdef ANDROID
 /*
  * Strictly these functions were available before Lollipop/21, but there was an accidental ABI
@@ -277,7 +279,6 @@ DF1(jtjferase){A y,fn;US*s;I h;
  ASSERT(!JT(jt,seclev),EVSECURE)
  F1RANK(0,jtjferase,self);
  RE(h=fnum(w));
-// obsolete  if(h) {RZ(y=str0(fname(sc(h))))} else ASSERT(y=vslit(C(AAV(w)[0])),EVFNUM);
  if(h) {ASSERT((y=fname(sc(h)))!=0,EVFNUM) RZ(y=str0(y))} else ASSERT((y=vslit(C(AAV(w)[0])))!=0,EVFNUM);
  if(h)RZ(jclose(sc(h)));
 #if (SYS&SYS_UNIX)
@@ -286,11 +287,7 @@ DF1(jtjferase){A y,fn;US*s;I h;
  RZ(fn=toutf16x(y)); USAV(fn)[AN(fn)]=0;  // install termination
  s=USAV(fn);
 // #if SY_WIN32 && !SY_WINCE
-#if 0
- R !_wunlink(s)||!_wrmdir(s)||!rmdir2(jt, (wchar_t*)s)?num(1):jerrno();
-#else
  R !_wunlink(s)||!_wrmdir(s)?num(1):jerrno();
-#endif
 #endif
 }    /* erase file or directory */
 
@@ -359,37 +356,17 @@ F1(jtjgetpid){
 }
 
 // #if (SYS & SYS_UNIX)
-#if 0
-#if defined(__GNUC__) && defined(_GNU_SOURCE)
-F1(jtpathdll){Dl_info info;
- ASSERT(!JT(jt,seclev),EVSECURE) ASSERTMTV(w);
- if(dladdr(jtpathdll, &info)){
-  R cstr((C*)info.dli_fname);
- } else R cstr((C*)"");
-}
-#else
-F1(jtpathdll){
- ASSERT(!JT(jt,seclev),EVSECURE) ASSERTMTV(w); R cstr((C*)"");
-}
-#endif
-#else
 F1(jtpathdll){
  ASSERT(!JT(jt,seclev),EVSECURE) ASSERTMTV(w);
 #if (SYS & SYS_UNIX)
 char p[PATH_MAX]; extern C sopath[];
 #else
-char p[MAX_PATH]; extern C dllpath[];
+char p[_MAX_PATH]; extern C sopath[];
 #endif
-#if (SYS & SYS_UNIX)
  strcpy(p,sopath);
- if(strlen(p)&&('/'==p[strlen(p)-1])) p[strlen(p)-1]=0;
-#else
- strcpy(p,dllpath);
- if(strlen(p)&&('\\'==p[strlen(p)-1])) p[strlen(p)-1]=0;
-#endif
+ if(strlen(p)&&(filesep==p[strlen(p)-1])) p[strlen(p)-1]=0;
  R cstr(p);
 }
-#endif
 
 #if (SYS & SYS_UNIX)
 int rmdir2(const char *dir)

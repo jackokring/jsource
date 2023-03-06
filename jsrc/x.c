@@ -11,15 +11,6 @@
 #include "j.h"
 #include "x.h"
 
-// obsolete #define SDERIV(id,f1,f2,flag,m,l,r)  \
-// obsolete  fdef(0,id,VERB,secf1,secf2,a,w,v2((I)(f1?(AF)f1:jtvalenceerr),(I)(f2?(AF)f2:jtvalenceerr)),(flag),(I)m,(I)l,(I)r)
-// obsolete 
-// obsolete #define SDERI2(id,f1,f2,flag,m,l,r)  \
-// obsolete  fdef(0,id,VERB,f1,   secf2,a,w,v2((I)(f1?(AF)f1:jtvalenceerr),(I)(f2?(AF)f2:jtvalenceerr)),(flag),(I)m,(I)l,(I)r)
-// obsolete 
-// obsolete 
-// obsolete static DF1(secf1){F1PREFIP; A h=FAV(self)->fgh[2]; ASSERT(!JT(jt,seclev),EVSECURE); R CALL1IP((AF)AV(h)[0],  w,self);}
-// obsolete static DF2(secf2){F2PREFIP; A h=FAV(self)->fgh[2]; ASSERT(!JT(jt,seclev),EVSECURE); R CALL2IP((AF)AV(h)[1],a,w,self);}
 
 // undocumented 13!: functions, used to test condrange
 static DF2(jtfindrange){
@@ -321,7 +312,7 @@ F2(jtforeign){F2PREFIP;I p,q;
   case XC(15,10): R CDERIV(CIBEAM, jtcder,       0,            VASGSAFE,RMAX,RMAX,RMAX);
   case XC(15,11): R CDERIV(CIBEAM, jtcderx,      0,            VASGSAFE,RMAX,RMAX,RMAX);
   case XC(15,12): R CDERIV(CIBEAM, jtdllsymhdr,  0,            VASGSAFE,RMAX,RMAX,RMAX);
-#if 0
+#if 0  //
   case XC(15,12): R CDERIV(CIBEAM, jtsmmblks,    0,            VASGSAFE,RMAX,RMAX,RMAX);
 #endif
   case XC(15,13): R CDERIV(CIBEAM, jtcallback,   jtcallback2,  VASGSAFE,RMAX,RMAX,RMAX);
@@ -333,7 +324,7 @@ F2(jtforeign){F2PREFIP;I p,q;
   case XC(15,20): R CDERIV(CIBEAM, jtcddlopen,   0,            VASGSAFE,RMAX,RMAX,RMAX);
   case XC(15,21): R CDERIV(CIBEAM, 0,            jtcddlsym,    VASGSAFE,RMAX,RMAX,RMAX);
   case XC(15,22): R CDERIV(CIBEAM, jtcddlclose,  0,            VASGSAFE,RMAX,RMAX,RMAX);
-#if 0
+#if 0  //
   case XC(15,23): R CDERIV(CIBEAM, jtcdjt,       0,            VASGSAFE,RMAX,RMAX,RMAX);
   case XC(15,24): R CDERIV(CIBEAM, jtcdlibl,     0,            VASGSAFE,RMAX,RMAX,RMAX);
   case XC(15,25): R CDERIV(CIBEAM, jtcdproc1,    jtcdproc2,    VASGSAFE,RMAX,RMAX,RMAX);

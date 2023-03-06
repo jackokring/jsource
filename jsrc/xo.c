@@ -115,7 +115,6 @@ F1(jtjopen){A z;I h;
  if(!AN(w))R w;
  if(AR(w))R rank1ex0(w,DUMMYSELF,jtjopen);
  RE(h=fnum(w));  // return non0 if the string is the # of an already-open file
-// obsolete  if(h){RZ(z=sc(h)); RZ(fname(z)); R z;}  // if already open, return # provided the file is open (it wouldn't be if the arg was an invalid file#)
  if(h){RZ(z=sc(h)); ASSERT(fname(z)!=0,EVFNUM); R z;}  // if already open, return # provided the file is open (it wouldn't be if the arg was an invalid file#)
   // opening a file by number seems weird - the only # you can use is for an open file, so what's the point?
  else{A ww;
@@ -130,17 +129,6 @@ F1(jtjopen){A z;I h;
   WRITEUNLOCK(JT(jt,flock))
   R sc(h);
 }}   /* open the file named w if necessary; return file# */
-
-#if 0  // doesn't work
-B jtadd2(J jt,F f1,F f2,C*cmd){A c,x;I ct=AM(JT(jt,fopf));
- if(f1==NULL) {AM(JT(jt,fopf))=ct+2;R 1;};
- GATV0(c,LIT,1+strlen(cmd),1);MC(CAV(c)+1,cmd,AN(c)-1);cmd=CAV(c);
- if(ct+2>AN(JT(jt,fopf))){RZ(JT(jt,fopa)=ext(1,JT(jt,fopa))); RZ(JT(jt,fopf)=ext(1,JT(jt,fopf))); AM(JT(jt,fopf))=ct;}
- *cmd='<';x=cstr(cmd); ACINITZAP(x) RZ(AAV(JT(jt,fopa))[ct]=x); RZ(IAV(JT(jt,fopf))[ct]=(I)f1);
- *cmd='>';x=cstr(cmd); ACINITZAP(x) RZ(AAV(JT(jt,fopa))[ct+1]=x); RZ(IAV(JT(jt,fopf))[ct+1]=(I)f2);
- R 1;
-}   /* add 2 entries to AM(JT(jt,fopf)) table (for hostio); null arg commits entries */
-#endif
 
 // 1!:22
 F1(jtjclose){A*av;I*iv,j,h;

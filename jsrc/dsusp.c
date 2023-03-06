@@ -109,11 +109,7 @@ static A jtsusp(J jt){A z;
  JT(jt,dbuser)&=~TRACEDBSUSCLEAR;  // when we start a new suspension, wait for a new clear
  // Make sure we have a decent amount of stack space left to run sentences in suspension
  // ****** no errors till end of routine, where jt and stacks have been restored *******
-#if USECSTACK
  jt->cstackmin=MAX(jt->cstackinit-(CSTACKSIZE-CSTACKRESERVE),jt->cstackmin-CSTACKSIZE/10);
-#else
- jt->fdepn =MIN(NFDEP ,jt->fdepn +NFDEP /10);
-#endif
  jt->fcalln=MIN(NFCALL,jt->fcalln+NFCALL/10);
  // if there is a 13!:15 sentence (latent expression) to execute before going into debug, do it
  A trap=0; READLOCK(JT(jt,dblock)) if((trap=JT(jt,dbtrap))!=0)ra(trap); READUNLOCK(JT(jt,dblock))  // fetch trap sentence and protect it
@@ -123,7 +119,6 @@ static A jtsusp(J jt){A z;
  UI savcstackmin=0;  // when we switch threads, we keep our stack; so we must use our stack-end.  If this is not zero, we must reset the stack on exit/change
  JT(jt,promptthread)=THREADID(jt);  // set that the debug thread is the one allowed to prompt
  while(1){A  inp;
-// obsolete   RESETERR
   jt->jerr=0;   // scaf not needed now since done in showerr
   A iep=0;
   // if there is an immex phrase, protect it during its execution
@@ -159,18 +154,10 @@ static A jtsusp(J jt){A z;
  jt=jtold;  // Reset to original debug thread.  NOTE that old is no longer valid, so don't tpop
  // Reset stack
  if(JT(jt,dbuser)&TRACEDB1){
-#if USECSTACK
   jt->cstackmin+=CSTACKSIZE/10;
-#else
-  jt->fdepn-=NFDEP/10;
-#endif
   jt->fcalln-=NFCALL/10;
  } else {
-#if USECSTACK
   jt->cstackmin=jt->cstackinit-(CSTACKSIZE-CSTACKRESERVE);
-#else
-  jt->fdepn =NFDEP;
-#endif
   jt->fcalln =NFCALL;
  }
  debz(); 
@@ -189,7 +176,6 @@ static A jtdebug(J jt){A z=0;C e;DC c,d;
  RZ(d=suspset(jt->sitop));  // find the topmost CALL frame and mark it as suspended
  if(d->dcix<0)R 0;  // if the verb has exited, all we can do is return
  e=jt->jerr;
-// obsolete  RESETERR
  jt->jerr=0;  // scaf not needed now since done in showerr
  // Suspend.  execute from the keyboard until a suspension-ending result is seen.  Clear the current name to start the suspension
  A savname=jt->curname; z=susp(); jt->curname=savname;  // suspension starts as anonymous
@@ -327,22 +313,14 @@ F2(jtdberr2){
 // of exit (run, step, clear, etc).  Other boxes give values for the run and ret types.  EXCEPTION: 13!:0 returns i. 0 0 for compatibility, but still flagged as AFDEBUGRESULT
 F1(jtdbc){UC k;
  ARGCHK1(w);
-// obsolete  if(AN(w)){
  RE(k=(UC)i0(w));
  ASSERT(!(k&~(TRACEDBSUSFROMSCRIPT|TRACEDB1)),EVDOMAIN);
  ASSERT(!k||!jt->glock,EVDOMAIN);
-// obsolete  }
-// obsolete  if(AN(w)){
  // turn debugging on/off in all threads
  JTT *jjbase=JTTHREAD0(jt);  // base of thread blocks
  DONOUNROLL(NALLTHREADS(jt), if(k&1)__atomic_fetch_or(&jjbase[i].uflags.trace,TRACEDB1,__ATOMIC_ACQ_REL);else __atomic_fetch_and(&jjbase[i].uflags.trace,~TRACEDB1,__ATOMIC_ACQ_REL);) JT(jt,dbuser)=k;
-#if USECSTACK
  jt->cstackmin=jt->cstackinit-((CSTACKSIZE-CSTACKRESERVE)>>(k&TRACEDB1));  // if we are setting debugging on, shorten the stack to allow suspension commands room to run
-#else
- jt->fdepn=NFDEP>>(k&TRACEDB1);
-#endif
  jt->fcalln=NFCALL>>(k&TRACEDB1);  // similarly reduce max fn-call depth
-// obsolete  }
  JT(jt,dbuser)|=TRACEDBSUSCLEAR;  // come out of suspension, whether 0 or 1
  A z; RZ(z=ca(mtm)); AFLAGORLOCAL(z,AFDEBUGRESULT) R z;
 }    /* 13!:0  clear stack; enable/disable suspension */

@@ -776,7 +776,7 @@ static A jtcolon0(J jt, I deftype){A l,z;C*p,*q,*s;A *sb;I m,n;
  while(1){
   RE(l=jgets("\001"));   // abort if error on input
   if(!l)break;  // exit loop if EOF.  The incomplete definition will be processed
-  if(deftype!=0)RZ(l=ddtokens(l,8+2));  // if non-noun def, handle DDs, for explicit def, return string, allow jgets().  Leave noun contents untouched
+  if(deftype!=0)RZ(l=ddtokens(l,0b1010));  // if non-noun def, handle DDs, for explicit def, return string, allow jgets().  Leave noun contents untouched
   // check for end: ) by itself, possibly with spaces
   m=AN(l); p=q=CAV(l); 
   NOUNROLL while(p<q+m&&' '==*p)++p; if(p<q+m&&')'==*p){NOUNROLL while(p<q+m&&' '==*++p); if(p>=m+q)break;}  // if ) with nothing else but blanks, stop
@@ -815,7 +815,6 @@ static A jtsent12c(J jt,A w,I userm){C*p,*q,*r,*s,*x;A z;
  ASSERT(!AN(w)||LIT&AT(w),EVDOMAIN);
  ASSERT(2>=AR(w),EVRANK);
  if(AR(w)>1)R rank1ex(w,DUMMYSELF,1,jtboxddline); // table, just box lines individually after checking for {{ }} (which come when we have an AR)
-// obsolete  IRS1(w,0L,1,jtbox,z); 
 
  // otherwise we have a single string.  Could be from 9 : string.  If not, scan it for {{ }}
  if(userm!=9){RZ(w=ddtokens(w,0b1110))}  // scan for {{ }}.  Don't allow calling for another line, and return result as string
@@ -1104,7 +1103,7 @@ static I pppp(J jt, A l, A c){I j; A fragbuf[20], *fragv=fragbuf+1; I fragl=size
 
 // a is a local symbol table, possibly in use
 // result is a copy of it, ready to use.  All PERMANENT symbols are copied over and given empty values, without inspecting any non-PERMANENT ones
-// The rank-flag of the table is 'not modified'
+// The rank-flag of the table is 'cloned'
 A jtclonelocalsyms(J jt, A a){A z;I j;I an=AN(a); LX *av=LXAV0(a),*zv;
  RZ(z=stcreate(2,AN(a),0L,0L)); zv=LXAV0(z); AR(z)|=ARLCLONED;  // allocate the clone; zv->clone hashchains; set flag to indicate cloned
  // Copy the first hashchain, which has the x/v hashes

@@ -134,10 +134,6 @@ DF2(jtunquote){A z;
  }
  trackinfo[wx]=0;  // null-terminate the info
 #endif
-#if !USECSTACK  // obsolete 
- I d=FAV(fs)->fdep; if(!d)REGOTO(d=fdep(fs));  // get stack depth of this function, for overrun prevention
- FDEPINC(d);  // verify sufficient stack space - NO ERRORS until FDEPDEC below
-#endif
  STACKCHKOFLSUFF(z=0; goto exitfa;)
  flgd0cpC|=jt->callstacknext; // Remember where our stack frame starts.  We may add an entry or two; execution may add more
  if(unlikely(explocale!=0)){  // there is a locative or implied locative
@@ -165,7 +161,6 @@ DF2(jtunquote){A z;
   // Recursion through $: does not go higher than the name it was defined in.  We make this happen by pushing the name onto the $: stack
   // We preserve the XDEFMODIFIER flag in jtinplace, because the type of the exec must not have been changed by name lookup.  Pass the other inplacing flags through if the call supports inplacing
   A s=jt->parserstackframe.sf; jt->parserstackframe.sf=fs; z=(*actionfn)((J)(((FAV(fs)->flag&(1LL<<((flgd0cpC>>FLGDYADX)+VJTFLGOK1X)))?-1:-JTXDEFMODIFIER)&(I)jtinplace),a,w,fs); jt->parserstackframe.sf=s;  // keep all flags in jtinplace
-// obsolete   // Undo the protection.  If, most unusually, the usecount goes to 0, back up and do the full recursive decrement
   if(unlikely(z==0)){jteformat(jt,fs,a,w,0);}  // make this a format point
  } else {
   // Extra processing is required.  Check each option individually
@@ -192,9 +187,6 @@ DF2(jtunquote){A z;
    if(jt->uflags.spfreeneeded)spfree();}        // if garbage collection required, do it
   if(d)debz();  // release stack frame if allocated
  }
-#if !USECSTACK  // obsolete 
- FDEPDEC(d);
-#endif
 
  // Now pop the stack.  Execution may have added entries, but our stack frame always starts in the same place.
  // We may add entries to the end of the caller's stack frame

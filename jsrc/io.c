@@ -169,6 +169,7 @@ JHS has the additional complication of critical sections of J code
 #ifdef _WIN32
 #include <windows.h>
 #include <winbase.h>
+#define filesep '\\'
 #else
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -187,6 +188,7 @@ JHS has the additional complication of critical sections of J code
 #include <ctype.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#define filesep '/'
 #define _stdcall
 #endif
 #include <stdint.h>
@@ -197,8 +199,7 @@ JHS has the additional complication of critical sections of J code
 #define JT(p,n) p->n  // used for references in JS, which most references in this module are
 #define IJT(p,n) JT(JJTOJ(p),n)    // used in function that interface to internal functions and thus take a JJ
 
-
-
+JS _Initializer(void*);
 extern void dllquit(JJ);
 
 // flags in jt indicate whether display is suppressed.  p is the prompt, s is the text.  suppression of s happens when it is created;
@@ -316,7 +317,6 @@ void breakclose(JS jt)
 {
  if(JT(jt,adbreak)==(C*)&JT(jt,breakbytes)) return;  // if no mapped file has been created, exit fast
  __atomic_store_n(&JT(jt,breakbytes),*(US*)(JT(jt,adbreak)),__ATOMIC_RELEASE);  // copy over any pending break request, plus other breakdata
-// obsolete  *&JT(jt,breakbytes)=*(US*)(JT(jt,adbreak));  // copy over any pending break request, plus other breakdata
  if(JT(jt,adbreakr)==JT(jt,adbreak))__atomic_store_n(&JT(jt,adbreakr),(C*)&JT(jt,breakbytes),__ATOMIC_RELEASE);  // move to look at the new data - but not if attn disabled
  C *oldbreak=JT(jt,adbreak); __atomic_store_n(&JT(jt,adbreak),(C*)&JT(jt,breakbytes),__ATOMIC_RELEASE);  // move request pointer in any case
  munmap(oldbreak,1);  // don't unmap the old area until pointers have been moved
@@ -330,9 +330,6 @@ void breakclose(JS jt)
 {
  if(JT(jt,adbreak)==(C*)&JT(jt,breakbytes)) return;  // if no mapped file has been created, exit fast
  __atomic_store_n(&JT(jt,breakbytes),*(US*)(JT(jt,adbreak)),__ATOMIC_RELEASE);  // copy over any pending break request, plus other breakdata
-// obsolete  *&JT(jt,breakbytes)=*(US*)(JT(jt,adbreak));  // copy over any pending break request, plus other breakdata
-// obsolete  if(JT(jt,adbreakr)==JT(jt,adbreak))JT(jt,adbreakr)=(C*)&JT(jt,breakbytes);  // move to look at the new data - but not if attn disabled
-// obsolete  JT(jt,adbreak)=(C*)&JT(jt,breakbytes);  // move attn-request pointer in any case
  if(JT(jt,adbreakr)==JT(jt,adbreak))__atomic_store_n(&JT(jt,adbreakr),(C*)&JT(jt,breakbytes),__ATOMIC_RELEASE);  // move to look at the new data - but not if attn disabled
  C *oldbreak=JT(jt,adbreak); __atomic_store_n(&JT(jt,adbreak),(C*)&JT(jt,breakbytes),__ATOMIC_RELEASE);  // move request pointer in any case
  UnmapViewOfFile(oldbreak); // don't unmap the old area until pointers have been moved
@@ -496,7 +493,7 @@ static char breaknone=0;
 B jtsesminit(JS jjt, I nthreads){R 1;}
 
 // Main entry point to run the sentence in *lp in the master thread, or in the thread given if jt is not a JS pointer
-int _stdcall JDo(JS jt, C* lp){int r; UI savcstackmin, savcstackinit, savqtstackinit;
+CDPROC int _stdcall JDo(JS jt, C* lp){int r; UI savcstackmin, savcstackinit, savqtstackinit;
  SETJTJM(jt,jm)
   // Normal output.  Call the output routine
  if(unlikely(jm->recurstate>RECSTATEIDLE)){
@@ -505,13 +502,11 @@ int _stdcall JDo(JS jt, C* lp){int r; UI savcstackmin, savcstackinit, savqtstack
   ASSERTTHREAD(!(jm->recurstate&(RECSTATEBUSY&RECSTATERECUR)),EVCTRL)  // fail if BUSY or RECUR
   // we know that in PROMPT state there is no volatile C state about, such as zombie status
  }
-#if USECSTACK
  if(JT(jt,cstacktype)==2){
   // multithreaded FE.  Reinit the stack limit on every call, as long as cstackmin is nonzero
   JT(jt,qtstackinit) = (uintptr_t)&jt;
   if(jm->cstackmin)jm->cstackmin=(jm->cstackinit=JT(jt,qtstackinit))-(CSTACKSIZE-CSTACKRESERVE);
  }
-#endif
  ++jm->recurstate;  // advance, to BUSY or RECUR state
  r=(int)jdo(jt,lp);
  if(unlikely(--jm->recurstate>RECSTATEIDLE)){  // return to IDLE or PROMPT state
@@ -524,7 +519,7 @@ int _stdcall JDo(JS jt, C* lp){int r; UI savcstackmin, savcstackinit, savqtstack
  R r;
 } 
 
-C* _stdcall JGetR(JS jt){
+CDPROC C* _stdcall JGetR(JS jt){
  jt=JorJJTOJ(jt);  // point to shared block
  R JT(jt,capture)?JT(jt,capture):(C*)"";
 }
@@ -535,7 +530,7 @@ C* _stdcall JGetR(JS jt){
 // so the user must save it before re-calling.  This is a kludge - the user should pass in the address/length of the block to use - but
 // it preserves the interface
 // If the pointer to the name is NULL we just free the block
-A _stdcall JGetA(JS jt, I n, C* name){A x,z=0;
+CDPROC A _stdcall JGetA(JS jt, I n, C* name){A x,z=0;
  SETJTJM(jt,jm)
  if(name==0){if(JT(jt,iomalloc)){FREE(JT(jt,iomalloc)); jm->malloctotal -= JT(jt,iomalloclen); JT(jt,iomalloc)=0; JT(jt,iomalloclen)=0;} R 0;}
  jm->jerr=0;
@@ -561,7 +556,7 @@ A _stdcall JGetA(JS jt, I n, C* name){A x,z=0;
 }
 
 /* socket protocol CMDSET */
-I _stdcall JSetA(JS jt,I n,C* name,I dlen,C* d){
+CDPROC I _stdcall JSetA(JS jt,I n,C* name,I dlen,C* d){
  SETJTJM(jt,jm)
  jm->jerr=0;
  if(!jtvnm(jm,n,name)){jtjsignal(jm,EVILNAME); R EVILNAME;}
@@ -581,7 +576,7 @@ typedef C* (_stdcall * inputtype) (J,C*);
 typedef C* (_stdcall * polltype) (J,int,int);
 */
 
-void _stdcall JSM(JS jt, void* callbacks[])
+CDPROC void _stdcall JSM(JS jt, void* callbacks[])
 {
  SETJTJM(jt,jm)
  JT(jt,smoutput) = (outputtype)callbacks[0];  // callback function for output to J session
@@ -630,7 +625,7 @@ void _stdcall JSM(JS jt, void* callbacks[])
 }
 
 /* set jclient callbacks from values - easier for nodejs */
-void _stdcall JSMX(JS jt, void* out, void* wd, void* in, void* poll, I opts)
+CDPROC void _stdcall JSMX(JS jt, void* out, void* wd, void* in, void* poll, I opts)
 {
  SETJTJM(jt,jm)
  JT(jt,smoutput) = (outputtype)out;
@@ -656,7 +651,7 @@ void _stdcall JSMX(JS jt, void* out, void* wd, void* in, void* poll, I opts)
 }
 
 // return pointer to string name of current locale, or 0 if error
-C* _stdcall JGetLocale(JS jt){
+CDPROC C* _stdcall JGetLocale(JS jt){
  SETJTJM(jt,jm)
  A *old=jm->tnextpushp;  // set free-back-to point
  if(JT(jt,iomalloc)){FREE(JT(jt,iomalloc)); jm->malloctotal -= JT(jt,iomalloclen); JT(jt,iomalloc)=0; JT(jt,iomalloclen)=0;}  // free old block if any
@@ -666,14 +661,14 @@ C* _stdcall JGetLocale(JS jt){
  R JT(jt,iomalloc);  // return pointer to string
 }
 
-A _stdcall Jga(JS jjt, I t, I n, I r, I*s){A z;
+CDPROC A _stdcall Jga(JS jjt, I t, I n, I r, I*s){A z;
  SETJTJM(jjt,jt)  // the name 'jt' is used by ga() for the shared pointer
  GA(z,t,n,r,s);
  ACINIT(z,ACUC1)  // set nonrecursive usecount so that parser won't free the block prematurely.  This gives the usecount as if the block were 'assigned' by this call
  return z;
 }
 
-void _stdcall JInterrupt(JS jt){
+CDPROC void _stdcall JInterrupt(JS jt){
  jt=JorJJTOJ(jt);
  // increment adbreak by 1, capping at 2
  C old=lda(&jt->adbreak[0]);
@@ -681,7 +676,6 @@ void _stdcall JInterrupt(JS jt){
   if(old>=2)break;
   if(casa(&jt->adbreak[0],&old,1+old))break;}
  // There is no need to wakeup waiting threads (good thing, because jbreak.bat can't do that, and anyway the master/debug thread may already be running).  All wait loops time out to recheck break status.
-// obsolete  wakeall(jm);
 }
 
 void oleoutput(JS jt, I n, char* s); /* SY_WIN32 only */
@@ -720,45 +714,73 @@ void jsto(JS jt,I type,C*s){C e;I ex;
  R;
 }
 
-#if SYS&SYS_UNIX
-char sopath[PATH_MAX];
+C dll_initialized= 0; // dll init sets to 1
 
-static void getsopath(void){
+#ifdef _WIN32
+char modulepath[_MAX_PATH]="";
+char sopath[_MAX_PATH]="";
+
+void getsopath(HINSTANCE hi, char* path)
+{
+ WCHAR wpath[_MAX_PATH];char* p;
+
+ GetModuleFileNameW(hi, wpath, _MAX_PATH);
+ WideCharToMultiByte(CP_UTF8,0,wpath,1+(int)wcslen(wpath),path,_MAX_PATH,0,0);
+ p = strrchr(path, filesep);
+ if(!p) p = strrchr(path, ':');
+ p[1] = 0;
+}
+
+#else
+// SYS&SYS_UNIX
+char sopath[PATH_MAX]="";
+
+void getsopath(char* path){
 const char *sym_name = "JGetLocale";
  void *sym_ptr = dlsym(RTLD_DEFAULT,sym_name);
 // fprintf(stdout,"SYMBOL %s ADDRESS %p\n", sym_name, sym_ptr);
  if (sym_ptr){
   Dl_info info;
   if (dladdr(sym_ptr,&info)){ // non-zero is success
-   strcpy(sopath,info.dli_fname);
+   strcpy(path,info.dli_fname);
    char *p1;
-   if((p1=strrchr(info.dli_fname,'/'))){sopath[p1-(char*)info.dli_fname]=0;}
-  } else *sopath=0;
- } else *sopath=0;
-// fprintf(stdout,"sopath: %s\n", sopath);
+   if((p1=strrchr(info.dli_fname,filesep))){path[p1-(char*)info.dli_fname]=0;}
+  } else *path=0;
+ } else *path=0;
+// fprintf(stdout,"sopath: %s\n", path);
 }
-
-C dll_initialized= 0; // dll init sets to 1
 
 // dll init on load - eqivalent to windows DLLMAIN DLL_ATTACH_PROOCESS
 __attribute__((constructor)) static void Initializer(){
+ _Initializer(0);
+}
+#endif
+
+// dll init on load - eqivalent to windows DLLMAIN DLL_ATTACH_PROOCESS
+JS _Initializer(void* hDLL){
  // Initialize J globals.  This is done only once.  Many of the globals are in static memory, initialized
  // by the compiler; some must be initialized a run-time in static memory; some must be allocated into A blocks
  // pointed to by static names.  Because of the A blocks, we have to perform a skeletal initialization of jt,
  // just enough to do ga().  The rest of jt is never used
- getsopath();
+#ifdef _WIN32
+ getsopath(0,modulepath);
+ getsopath(hDLL,sopath);
+#else
+ getsopath(sopath);
+#endif
  JS jt=jvmreservea(sizeof(JST),__builtin_ctz(JTALIGNBDY));
- if(!jt)R;
+ if(!jt)R 0;
  I sz=offsetof(JST,threaddata[1]); // #relevant bytes: just JS and the first JT.  This makes MDTHREAD() valid
- if(!jvmcommit(jt,sz)){jvmrelease(jt,sizeof(JST));R;}
- if(!jtglobinit(jt)){jvmrelease(jt,sizeof(JST)); R;}
+ if(!jvmcommit(jt,sz)){jvmrelease(jt,sizeof(JST));R 0;}
+ if(!jtglobinit(jt)){jvmrelease(jt,sizeof(JST)); R 0;}
  dll_initialized=1;
  jvmrelease(jt,sizeof(JST)); //the jt block itself can be released; we effectively orphan any blocks pointed to thereby, because they are used by the globals we've just initialised
+ R jt;
 }
 
  // Init for a new J instance.  Globals have already been initialized.
  // Create a new jt, which will be the one we use for the entirety of the instance.
-JS _stdcall JInit(void){
+CDPROC JS _stdcall JInit(void){
  if(!dll_initialized)R 0; // constructor failed
  JS jt=jvmreservea(sizeof(JST),__builtin_ctz(JTALIGNBDY));
  if(!jt)R 0;
@@ -773,7 +795,7 @@ JS _stdcall JInit(void){
 
  // Init for a new J instance.  Globals have already been initialized.
  // Create a new jt, which will be the one we use for the entirety of the instance.
-JS _stdcall JInit2(C*libpath){
+CDPROC JS _stdcall JInit2(C*libpath){
  if(!dll_initialized)R 0; // constructor failed
  JS jt=jvmreservea(sizeof(JST),__builtin_ctz(JTALIGNBDY));
  if(!jt)R 0;
@@ -782,13 +804,13 @@ JS _stdcall JInit2(C*libpath){
  mvc(offsetof(JST,threaddata[1]),jt,1,MEMSET00);
  // Initialize all the info for the shared region and the master thread
  if(!jtjinit2(jt,0,0)){jvmrelease(jt,sizeof(JST)); R 0;}
- if(libpath){strcpy(sopath,libpath);if(strlen(sopath)&&('/'==sopath[strlen(sopath)-1]))sopath[strlen(sopath)-1]=0;}
+ if(libpath){strcpy(sopath,libpath);if(strlen(sopath)&&(filesep==sopath[strlen(sopath)-1]))sopath[strlen(sopath)-1]=0;}
  jgmpinit(sopath); // mp support for 1x and 2r3
  R jt;  // return JST
 }
 
 // clean up at the end of a J instance
-int _stdcall JFree(JS jt){
+CDPROC int _stdcall JFree(JS jt){
   if(!jt) R 0;
   SETJTJM(jt,jm)
   breakclose(jt);
@@ -800,7 +822,6 @@ int _stdcall JFree(JS jt){
   jvmrelease(jt,sizeof(JST)); // free the initial allocation
   R 0;
 }
-#endif
 
 F1(jtbreakfnq){
  ASSERTMTV(w);
@@ -833,7 +854,6 @@ F1(jtbreakfns){A z;I *fh,*mh=0; void* ad;
  IJT(jt,breakfh)=fh;
  IJT(jt,breakmh)=mh;
  __atomic_store_n((US*)ad,*(US*)IJT(jt,adbreak),__ATOMIC_RELEASE);  // copy breakstatus from current setting
-// obsolete  *(US*)ad==*(US*)IJT(jt,adbreak);  // copy breakstatus from current setting
  if(IJT(jt,adbreakr)==IJT(jt,adbreak))IJT(jt,adbreakr)=ad;  // move attn-read pointer, unless interrupts disabled
  IJT(jt,adbreak)=ad;  // start using the mapped area
  R mtm;
@@ -850,7 +870,7 @@ int valid(C* psrc, C* psnk)
  return 0;  
 }
 
-int _stdcall JGetM(JS jt, C* name, I* jtype, I* jrank, I* jshape, I* jdata)
+CDPROC int _stdcall JGetM(JS jt, C* name, I* jtype, I* jrank, I* jshape, I* jdata)
 {
  SETJTJM(jt,jm)
  A a; char gn[256]; int z;
@@ -918,7 +938,7 @@ static int setterm(JS jtt, C* name, I* jtype, I* jrank, I* jshape, I* jdata)
  return jt->jerr;
 }
 
-int _stdcall JSetM(JS jt, C* name, I* jtype, I* jrank, I* jshape, I* jdata)
+CDPROC int _stdcall JSetM(JS jt, C* name, I* jtype, I* jrank, I* jshape, I* jdata)
 {
  SETJTJM(jt,jm)
  int er;
@@ -941,14 +961,14 @@ C* esub(JS jt, I ec)
  return CAV(AAV(JT(jt,evm))[ec]);
 }
 
-int _stdcall JErrorTextM(JS jt, I ec, I* p)
+CDPROC int _stdcall JErrorTextM(JS jt, I ec, I* p)
 {
  jt=JorJJTOJ(jt);
  *p = (I)esub(jt, ec);
  return 0;
 }
 
-#if 0
+#if 0  // for debugging
 int enabledebug=0;
 F1(jttest1){
  ARGCHK1(w);

@@ -61,7 +61,7 @@
 #define FHRHRESETROOT(b) (FHRHROOT + (((I)1)<<(b)))     // value to set root to after garbage-collection if the allocation was NOT freed
 #define FHRHENDVALUE(b) (FHRHROOTFREE + (((I)1)<<(b)))     // value representing last+1 block in allo.  Subtract FHRHBININCR to get to previous
 
-#if 1 || (MEMAUDIT==0 || !_WIN32)  // windows makes free() a void
+#if (MEMAUDIT==0 || !_WIN32) || 1  // windows makes free() a void
 #define FREECHK(x) FREE(x)
 #else
 #define FREECHK(x) if(!FREE(x))SEGFAULT;  // crash on error
@@ -250,8 +250,6 @@ B jtmeminitt(JJ jt){I k;
 #else
 #define AUDITFILL ||((MEMAUDIT&0x4)?AC(Wx)!=(I)0xdeadbeefL:0)
 #endif
-// obsolete #pragma clang diagnostic push
-// obsolete #pragma clang diagnostic ignored "-Wunused-but-set-variable"
 // your code for which the warning gets suppressed 
 void jtauditmemchains(J jt){
 #if MEMAUDIT&0x30
@@ -261,7 +259,6 @@ void jtauditmemchains(J jt){
 }
 #endif
 }
-// obsolete #pragma clang diagnostic pop
 // 13!:23  check the memory free list, a la auditmemchains()
 // return error info, a 2-atom list where
 //  atom 0 is return code 0=OK 1=pool number corrupted 2=header corrupted 3=usecount corrupted (valid only if MEMAUDIT&0x4) 4=loop in chain 
@@ -343,7 +340,7 @@ B jtspfree(J jt){I i;A p;
    for(p=baseblockproxyroot;p;){A np = AFPROXYCHAIN(p);  // next-in-chain
     A baseblock = FHRHROOTADDR(p,offsetmask);  // get address of corresponding base block
     if(FHRHISROOTALLOFREE(AFHRH(baseblock))){ // Free fully-unused base blocks;
-#if 1 || ALIGNTOCACHE   // with short headers, always align to cache bdy
+#if ALIGNTOCACHE || 1   // with short headers, always align to cache bdy
      FREECHK(((I**)baseblock)[-1]);  // If aligned, the word before the block points to the original block address
      jt->malloctotal-=PSIZE+TAILPAD+ALIGNPOOLTOCACHE*CACHELINESIZE;  // return storage+bdy
      jt->mfreegenallo-=TAILPAD+ALIGNPOOLTOCACHE*CACHELINESIZE;  // only the pad is net allocation
@@ -538,11 +535,6 @@ static void auditsimverify0(J jt,A w){
  if(!(AFLAG(w)&AFVIRTUAL)&&UCISRECUR(w)){  // process children
   if((AT(w)&(RAT|XNUM|BOX|SPARSE))>0) {A* v=AAV(w);  DQ(AT(w)&RAT?2*AN(w):AN(w), if(*v)auditsimverify0(jt, unlikely(AT(w)&XNUM+RAT) ?*v :CNULLNOERR(QCWORD(*v))); ++v;)}  // check descendants even if nonrecursive
   if((AT(w)&BOX+SPARSE)>0){
-// obsolete    I n=AN(w); I af=AFLAG(w);
-// obsolete    A* RESTRICT wv=AAV(w);  // pointer to box pointers
-// obsolete    I wrel = af&AFNJA?(I)w:0;  // If NJA, add wv[] to wd; otherwise wv[] is a direct pointer
-// obsolete    if((af&AFNJA)||n==0)R;  // no processing if not J-managed memory (rare)
-// obsolete    DO(n, auditsimverify0(jt,(A)(intptr_t)((I)CNULLNOERR(QCWORD(wv[i]))+(I)wrel)););
   }else if(AT(w)&FUNC) {V* RESTRICT v=VAV(w);
    auditsimverify0(jt,v->fgh[0]); auditsimverify0(jt,v->fgh[1]); auditsimverify0(jt,v->fgh[2]);
   }else if(AT(w)&(RAT|XNUM)) {
@@ -962,13 +954,11 @@ A jtra(AD* RESTRICT wd,I t,A sv){I n=AN(wd);
   np=*wv;  // prefetch first box
   NOUNROLL while(--n>0){AD* np0;  // n is always >0 to start.  Loop for n-1 times
    np0=*++wv;  // fetch next box if it exists, otherwise harmless value.  This fetch settles while the ra() is running
-#ifdef PREFETCH
    PREFETCH((C*)np0);   // prefetch the next box while ra() is running
-#endif
 #if AUDITEXECRESULTS
 if(np&&AC(np)<0)SEGFAULT;  // contents are never inplaceable
 #endif
-   if((np=QCWORD(np))!=0){/* obsolete if(unlikely(AC(np)<0)){printf("system error: contents not incorped\n");while(1);}*/racontents(np);}  // increment the box, possibly turning it to recursive.  Low bits of box addr may be enqueue flags.
+   if((np=QCWORD(np))!=0){racontents(np);}  // increment the box, possibly turning it to recursive.  Low bits of box addr may be enqueue flags.
      // a pyx is always recursive; we can increment the pyx's usecount here but we will never go to the contents
    np=np0;  // advance to next box
   };
@@ -1016,9 +1006,7 @@ void jtfamftrav(J jt,AD* RESTRICT wd,I t){I n=AN(wd);
      np0=*++wv;  // fetch next box if it exists, otherwise harmless value.  This fetch settles while the ra() is running
      // NOTE that we do not use C() here, so that we free pyxes as well as contents.  The usecount of the pyx will protect it until its
      // value has been installed.  Thus we ensure that fa() never causes a system lock.
-#ifdef PREFETCH
      PREFETCH((C*)np0);   // prefetch the next box while ra() is running
-#endif
      // We now free virtual blocks in boxed nouns, as a step toward making it easier to return them to WILLOPEN
      if(likely((np=QCWORD(np))!=0)){  // value is 0 only if error filling boxed noun.  If the value is a parsed word, it may have low-order bit flags
       if(likely(!(AFLAG(np)&AFVIRTUAL))){fanano0(np);}   // do the recursive POP only if RECURSIBLE block; then free np
@@ -1168,10 +1156,7 @@ void jttpop(J jt,A *old){A *endingtpushp;
     // We never tpush a PERMANENT block, but a block can become PERMANENT during the run, so we have to check
     if(likely(!ACISPERM(c))){     // if block not PERMANENT...
      I flg=AFLAG(np);  // fetch flags, just in case
-
-#ifdef PREFETCH
      PREFETCH((C*)np0);   // prefetch the next box.  Might be 0; that's no crime
-#endif
      // If count goes to 0: if the usercount is marked recursive, do the recursive fa(), otherwise just free using mf().  If virtual, the backer must be recursive, so fa() it
      // Otherwise just decrement the count
      if(c<=1||ACDECRNOPERM(np)<=1){  // avoid RFO if count is 1
@@ -1184,7 +1169,6 @@ void jttpop(J jt,A *old){A *endingtpushp;
        // NOTE: a sparse recursive would cause trouble, because the sparseness is not in the flag and we would have to test the type as well.  To avoid this,
        // we make sure no such block is created in sprz()
      }
-// obsolete else ACDECRNOPERM(np)  // scaf must test for going to 0 here
     }
    }
    np=np0;  // Advance to next block

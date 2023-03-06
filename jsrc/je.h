@@ -113,9 +113,6 @@ extern F1(jtexg);
 // extern F1(jtexpn1);
 // extern F1(jtfact);
 extern F1(jtfactor);
-#if !USECSTACK
-extern F1(jtfdepadv);
-#endif
 extern F1(jtfh15);
 extern F1(jtfiller);
 extern DF1(jtfix);
@@ -741,9 +738,6 @@ extern I        jtextendunderlock(J,A*,US*,I);
 extern L*       jtextnvr(J,L*);
 extern void     jtfamf(J,AD * RESTRICT,I);
 extern A        jtfdef(J,I,C,I,AF,AF,A,A,A,I,I,I,I);
-#if !USECSTACK
-extern I        jtfdep(J,A);
-#endif
 extern A        jtfindnameinscript(J,C *,C *,I);
 extern void     jtfillv0(J,I);        /* "fill" name conflict on Mac             */
 extern A        jtfindnl(J,I);
@@ -806,9 +800,6 @@ extern I        jtjset(J,C*,A);
 extern A     jtjsigd(J,C*) __attribute__((cold));
 extern A     jtjsignal(J,I) __attribute__((cold));
 extern A     jtjsignale(J,I,A,I) __attribute__((cold));
-#if 0  // obsolete
-extern void     jtjsignalf(J,I,C*,...) __attribute__((cold));
-#endif
 extern void     jtjsignal2(J,I,A) __attribute__((cold));
 extern A     jtjsignal3(J,I,A,I) __attribute__((cold));
 extern A        jtleakblockread(J,A);
@@ -855,11 +846,7 @@ extern A        jtras(J,AD* RESTRICT);
 extern A        jtra00s(J,AD* RESTRICT);
 extern A        jtrank1ex(J,AD * RESTRICT,A,I,AF);
 extern A        jtrank1ex0(J,AD * RESTRICT,A,AF);
-#if 1
 extern A        jtrank2ex(J,AD * RESTRICT,AD * RESTRICT,A,UI,AF);
-#else // obsolete
-extern A        jtrank2ex(J,AD * RESTRICT,AD * RESTRICT,A,UI,UI,AF);
-#endif
 extern A        jtrank2ex0(J,AD * RESTRICT,AD * RESTRICT,A,AF);
 extern A        jtrd(J,F,I,I);
 extern A        jtrealize(J,A);
@@ -968,7 +955,6 @@ extern B        jtxsinit(JS);
 extern B        all0(A);
 extern B        all1(A);
 extern I        allosize(A);
-// obsolete extern I        atoplr(A);
 extern I        atype(I);
 extern I        boxat(A,I,I,I);
 extern I        bsum(I,B*);
@@ -991,7 +977,6 @@ extern void     jstpoll(J);
 extern void     jststop(J);
 extern I        level(J,A);
 extern I        levelle(J,A,I);
-// obsolete extern A        makenounasgsafe(J,A);
 extern void     mvc(I,void*,I,void*);
 extern B        nameless(A);
 extern D        qpf(void);
@@ -1001,13 +986,22 @@ extern C        spellin(I,C*);
 extern void     spellit(C,C*);
 extern I        smmallosize(A);
 extern void     smmfrr(A);
-extern void     sortiq1(I*,I);
+extern void     vvsortqs8ai(IL*,I);
+extern void     vvsortqs8ao(IL*,IL*,I);
+extern void     vvsortqs4ai(I4*,I);
+extern void     vvsortqs4ao(I4*,I4*,I);
+#if BW==64
+#define vvsortqiai vvsortqs8ai
+#define vvsortqiao vvsortqs8ao
+#else
+#define vvsortqiai vvsortqs4ai
+#define vvsortqiao vvsortqs4ao
+#endif
 extern I        strtoI10s(I,C*);
 extern D        tod(void);
 extern void     va1primsetup(A);
 extern void     va2primsetup(A);
 extern B        vlocnm(I,C*);
-// obsolete extern void     wakeall(J);
 #if PYXES
 extern void     readlock(S*,S);
 extern void     writelock(S*,S);
