@@ -83,7 +83,9 @@ backtrace_open (const char *filename, backtrace_error_callback error_callback,
      O_CLOEXEC. It doesn't matter if this fails for some reason.
      FIXME: At some point it should be safe to only do this if
      O_CLOEXEC == 0.  */
+#ifndef _WIN32
   fcntl (descriptor, F_SETFD, FD_CLOEXEC);
+#endif
 #endif
 
   return descriptor;
