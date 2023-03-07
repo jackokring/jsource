@@ -34,6 +34,8 @@ else
 BACKTRACE_OBJS := $(BACKTRACE_OBJS) elf.o
 endif
 
+ifeq (windows,$(findstring windows,$(jplatform64)))
+BACKTRACE_OBJS := $(BACKTRACE_OBJS) mman.o
 endif
 
 OBJS=  \
