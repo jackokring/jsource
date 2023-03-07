@@ -669,8 +669,9 @@ static __emu_inline __emu_int64_t __emu_mm256_extract_epi64( __emu__m256i a, con
     A = a;
     return ((__emu_int64_t*)(&A))[ndx & 0x3];
 }
-#ifndef ARCH_WIN
+#ifndef _WIN32
 // RACK VCV not windows
+// Still using linux build though as MSYS2
 /*
  * Compare predicates for scalar and packed compare intrinsics
  */
