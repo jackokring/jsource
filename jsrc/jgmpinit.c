@@ -2,7 +2,8 @@
 /* Licensed use only.                                                      */
 /*                                                                         */
 /* j init libgmp support                                                   */
-
+#undef _WIN32
+//maybe this is better to try posix form
 #define JGMPINIT    // tell jgmp.h to declare storage rather than externs
 #ifdef _WIN32
  #include <windows.h>

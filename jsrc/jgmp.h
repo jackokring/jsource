@@ -121,9 +121,11 @@ There are several shorthands for built-in types.
 
 #undef __GMP_WITHIN_GMP
 #ifdef _WIN32
-#undef MSC_BUILD_DLL
-#define MSC_USE_DLL
-#include <mpir.h>
+//#undef MSC_BUILD_DLL
+//#define MSC_USE_DLL
+//#include <mpir.h>
+//might work on mys2
+#include <gmp.h>
 #else
 #include <gmp.h>
 #endif
