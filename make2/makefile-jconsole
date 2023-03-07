@@ -38,6 +38,8 @@ ifeq (windows,$(findstring windows,$(jplatform64)))
 BACKTRACE_OBJS := $(BACKTRACE_OBJS) mman.o
 endif
 
+endif
+
 OBJS=  \
  jconsole.o \
  jeload.o \
