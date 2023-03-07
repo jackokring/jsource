@@ -59,13 +59,15 @@ typedef unsigned char       BYTE;
 #include <wchar.h>
 #include <complex.h>
 #undef I
-#ifdef _WIN32
-typedef _Fcomplex float_complex;
-typedef _Dcomplex double_complex;
-#else
+//#ifdef _WIN32
+//typedef _Fcomplex float_complex;
+//typedef _Dcomplex double_complex;
+//typedef float[2] float_complex;
+//typedef double[2] double_complex;
+//#else
 typedef float complex float_complex;
 typedef double complex double_complex;
-#endif
+//#endif
 
 #ifdef ANDROID
 #if __ANDROID_API__ < 23
@@ -662,11 +664,11 @@ static void convertdown(I*pi,I n,C t){
   case 'b': {BYTE*pt=(BYTE*)pi;               DO(n, pt[i]=(BYTE)pi[i];);} break;
   case 's': {short*pt=(short*)pi;             DO(n, pt[i]=(short)pi[i];);} break;
   case 'i': {int  *pt=(int  *)pi;             DO(n, pt[i]=(int)  pi[i];);} break;
-#ifdef _WIN32
-  case 'z': {float_complex*pt=(float_complex*)pi;D*pd=(D*)pi; DO(n, pt[i]=_FCOMPLEX_((float)pd[2*i],(float)pd[1+2*i]););} break;
-#else
+//#ifdef _WIN32
+//  case 'z': {float_complex*pt=(float_complex*)pi;D*pd=(D*)pi; DO(n, pt[i]=_FCOMPLEX_((float)pd[2*i],(float)pd[1+2*i]););} break;
+//#else
   case 'z': {float_complex*pt=(float_complex*)pi;D*pd=(D*)pi; DO(n, pt[i]=(float)pd[2*i]+_Complex_I*(float)pd[1+2*i];);} break;
-#endif
+//#endif
 }}   /* convert I in place to s or int and d to f and j to z */
 
 static void convertup(I*pi,I n,C t){I j=n;
