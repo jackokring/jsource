@@ -330,7 +330,8 @@ B nogmp(){R!libgmp;}
 
 #ifdef _WIN32
 void dldiag(){}
-#define jgmpfn(fn) j##fn= GetProcAddress(libgmp,"__g"#fn); if(!(j##fn)){fprintf(stderr,"%s\n","error loading "#fn);};
+//cast to accept assignment ... good?
+#define jgmpfn(fn) (long long int (*)())j##fn= GetProcAddress(libgmp,"__g"#fn); if(!(j##fn)){fprintf(stderr,"%s\n","error loading "#fn);};
 #else
 void dldiag(){char*s=dlerror();if(s)fprintf(stderr,"%s\n",s);}
 #define jgmpfn(fn) j##fn= dlsym(libgmp,"__g"#fn); dldiag();
