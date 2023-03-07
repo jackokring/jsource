@@ -670,8 +670,6 @@ static __emu_inline __emu_int64_t __emu_mm256_extract_epi64( __emu__m256i a, con
     return ((__emu_int64_t*)(&A))[ndx & 0x3];
 }
 
-#ifndef _WIN32
-# some wierd include through Rack VCV on windows
 /*
  * Compare predicates for scalar and packed compare intrinsics
  */
@@ -708,7 +706,7 @@ static __emu_inline __emu_int64_t __emu_mm256_extract_epi64( __emu__m256i a, con
 #define _CMP_GE_OQ     0x1D  /* Greater-than-or-equal (ordered, nonsignaling)       */
 #define _CMP_GT_OQ     0x1E  /* Greater-than (ordered, nonsignaling)                */
 #define _CMP_TRUE_US   0x1F  /* True (unordered, signaling)                         */
-#endif
+
 // avx2
 static __emu_inline __emu__m256i __emu_mm256_broadcastb_epi8        ( __m128i a )
 {
