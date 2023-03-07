@@ -331,10 +331,10 @@ B nogmp(){R!libgmp;}
 #ifdef _WIN32
 void dldiag(){}
 //cast to accept assignment ... good?
-#define jgmpfn(fn) (long long int (*)())j##fn= GetProcAddress(libgmp,"__g"#fn); if(!(j##fn)){fprintf(stderr,"%s\n","error loading "#fn);};
+#define jgmpfn(fn, cast) j##fn= cast GetProcAddress(libgmp,"__g"#fn); if(!(j##fn)){fprintf(stderr,"%s\n","error loading "#fn);};
 #else
 void dldiag(){char*s=dlerror();if(s)fprintf(stderr,"%s\n",s);}
-#define jgmpfn(fn) j##fn= dlsym(libgmp,"__g"#fn); dldiag();
+#define jgmpfn(fn, cast) j##fn= dlsym(libgmp,"__g"#fn); dldiag();
 #endif
 
 // referenced gmp routines are declared twice:
@@ -385,62 +385,62 @@ void jgmpinit(C*libpath) {
 #ifdef IMPORTGMPLIB
  mp_set_memory_functions(jmalloc4gmp, jrealloc4gmp, jfree4gmp);
 #else
- jgmpfn(mp_set_memory_functions);
+ jgmpfn(mp_set_memory_functions, (void (*)(void * (*)(size_t), void * (*)(void *, size_t,  size_t), void (*)(void *, size_t))));
  jmp_set_memory_functions(jmalloc4gmp, jrealloc4gmp, jfree4gmp);
  gemptr= gempool;          // silly hack to avert silly libgmp failure case
  gempwsfull= 0;
  GMPLOCKINIT;
- jgmpfn(mpq_add);          // https://gmplib.org/manual/Rational-Arithmetic
+ jgmpfn(mpq_add, (void (*)(__mpq_struct *, const __mpq_struct *, const __mpq_struct *)));          // https://gmplib.org/manual/Rational-Arithmetic
  // DO NOT USE //          jgmpfn(mpq_canonicalize); // https://gmplib.org/manual/Rational-Number-Functions
- jgmpfn(mpq_clear);        // https://gmplib.org/manual/Initializing-Rationals
- jgmpfn(mpq_cmp);          // https://gmplib.org/manual/Comparing-Rationals
+ jgmpfn(mpq_clear, (void (*)(__mpq_struct *)));        // https://gmplib.org/manual/Initializing-Rationals
+ jgmpfn(mpq_cmp, (int (*)(const __mpq_struct *, const __mpq_struct *)));          // https://gmplib.org/manual/Comparing-Rationals
 #ifndef RASPI
- jgmpfn(mpq_cmp_z);        // https://gmplib.org/manual/Comparing-Rationals
+ jgmpfn(mpq_cmp_z, (int (*)(const __mpq_struct *, const __mpz_struct *)));        // https://gmplib.org/manual/Comparing-Rationals
 #endif
- jgmpfn(mpq_div);          // https://gmplib.org/manual/Rational-Arithmetic
- jgmpfn(mpq_get_d);        // https://gmplib.org/manual/Rational-Conversions
- jgmpfn(mpq_get_str);      // https://gmplib.org/manual/Rational-Conversions
- jgmpfn(mpq_init);         // https://gmplib.org/manual/Initializing-Rationals
- jgmpfn(mpq_mul);          // https://gmplib.org/manual/Rational-Arithmetic
- jgmpfn(mpq_out_str);      // https://gmplib.org/manual/I_002fO-of-Rationals
- jgmpfn(mpq_set);          // https://gmplib.org/manual/Initializing-Rationals
- jgmpfn(mpq_sub);          // https://gmplib.org/manual/Rational-Arithmetic
- jgmpfn(mpz_abs);          // https://gmplib.org/manual/Integer-Arithmetic
- jgmpfn(mpz_add);          // https://gmplib.org/manual/Integer-Arithmetic
- jgmpfn(mpz_add_ui);       // https://gmplib.org/manual/Integer-Arithmetic
- jgmpfn(mpz_bin_ui);       // https://gmplib.org/manual/Number-Theoretic-Functions
- jgmpfn(mpz_cdiv_q);       // https://gmplib.org/manual/Integer-Division
- jgmpfn(mpz_fdiv_q);       // https://gmplib.org/manual/Integer-Division
- jgmpfn(mpz_clear);        // https://gmplib.org/manual/Initializing-Integers
- jgmpfn(mpz_cmp);          // https://gmplib.org/manual/Integer-Comparisons
- jgmpfn(mpz_cmpabs_ui);    // https://gmplib.org/manual/Integer-Comparisons
- jgmpfn(mpz_cmp_si);       // https://gmplib.org/manual/Integer-Comparisons
- jgmpfn(mpz_fac_ui);       // https://gmplib.org/manual/Number-Theoretic-Functions
- jgmpfn(mpz_fdiv_q);       // https://gmplib.org/manual/Integer-Division
- jgmpfn(mpz_fdiv_qr);      // https://gmplib.org/manual/Integer-Division
- jgmpfn(mpz_fdiv_qr_ui);   // https://gmplib.org/manual/Integer-Division
- jgmpfn(mpz_fdiv_r);       // https://gmplib.org/manual/Integer-Division
- jgmpfn(mpz_gcd);          // https://gmplib.org/manual/Number-Theoretic-Functions
- jgmpfn(mpz_get_d);        // https://gmplib.org/manual/Converting-Integers
- jgmpfn(mpz_get_d_2exp);   // https://gmplib.org/manual/Converting-Integers
- jgmpfn(mpz_get_str);      // https://gmplib.org/manual/Converting-Integers
- jgmpfn(mpz_get_si);       // https://gmplib.org/manual/Converting-Integers
- jgmpfn(mpz_init);         // https://gmplib.org/manual/Initializing-Integers
- jgmpfn(mpz_init_set_d);   // https://gmplib.org/manual/Simultaneous-Integer-Init-_0026-Assign
- jgmpfn(mpz_init_set_str); // https://gmplib.org/manual/Simultaneous-Integer-Init-_0026-Assign
- jgmpfn(mpz_init_set_si);  // https://gmplib.org/manual/Simultaneous-Integer-Init-_0026-Assign
- jgmpfn(mpz_lcm);          // https://gmplib.org/manual/Number-Theoretic-Functions
- jgmpfn(mpz_mul);          // https://gmplib.org/manual/Integer-Arithmetic
- jgmpfn(mpz_neg);          // https://gmplib.org/manual/Integer-Arithmetic
- jgmpfn(mpz_out_str);      // (for debugging) https://gmplib.org/manual/I_002fO-of-Integers
- jgmpfn(mpz_powm);         // https://gmplib.org/manual/Integer-Exponentiation
- jgmpfn(mpz_pow_ui);       // https://gmplib.org/manual/Integer-Exponentiation
- jgmpfn(mpz_probab_prime_p);//https://gmplib.org/manual/Number-Theoretic-Functions
- jgmpfn(mpz_ui_pow_ui);    // https://gmplib.org/manual/Integer-Exponentiation
- jgmpfn(mpz_root);         // https://gmplib.org/manual/Integer-Roots
- jgmpfn(mpz_set);          // https://gmplib.org/manual/Assigning-Integers
+ jgmpfn(mpq_div, (void (*)(__mpq_struct *, const __mpq_struct *, const __mpq_struct *)));          // https://gmplib.org/manual/Rational-Arithmetic
+ jgmpfn(mpq_get_d, (D (*)(const __mpq_struct *)));        // https://gmplib.org/manual/Rational-Conversions
+ jgmpfn(mpq_get_str, (C * (*)(C *, int,  const __mpq_struct *)));      // https://gmplib.org/manual/Rational-Conversions
+ jgmpfn(mpq_init, (void (*)(__mpq_struct *)));         // https://gmplib.org/manual/Initializing-Rationals
+ jgmpfn(mpq_mul, (void (*)(__mpq_struct *, const __mpq_struct *, const __mpq_struct *)));          // https://gmplib.org/manual/Rational-Arithmetic
+ jgmpfn(mpq_out_str, (void (*)(FILE *, int,  const __mpq_struct *)));      // https://gmplib.org/manual/I_002fO-of-Rationals
+ jgmpfn(mpq_set, (void (*)(__mpq_struct *, const __mpq_struct *)));          // https://gmplib.org/manual/Initializing-Rationals
+ jgmpfn(mpq_sub, (void (*)(__mpq_struct *, const __mpq_struct *, const __mpq_struct *)));          // https://gmplib.org/manual/Rational-Arithmetic
+ jgmpfn(mpz_abs, (void (*)(__mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Integer-Arithmetic
+ jgmpfn(mpz_add, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Integer-Arithmetic
+ jgmpfn(mpz_add_ui, (void (*)(__mpz_struct *, const __mpz_struct *, mpir_ui)));       // https://gmplib.org/manual/Integer-Arithmetic
+ jgmpfn(mpz_bin_ui, (void (*)(__mpz_struct *, const __mpz_struct *, mpir_ui)));       // https://gmplib.org/manual/Number-Theoretic-Functions
+ jgmpfn(mpz_cdiv_q, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));       // https://gmplib.org/manual/Integer-Division
+ jgmpfn(mpz_fdiv_q, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));       // https://gmplib.org/manual/Integer-Division
+ jgmpfn(mpz_clear, (void (*)(__mpz_struct *)));        // https://gmplib.org/manual/Initializing-Integers
+ jgmpfn(mpz_cmp, (int (*)(const __mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Integer-Comparisons
+ jgmpfn(mpz_cmpabs_ui, (int (*)(const __mpz_struct *, mpir_ui)));    // https://gmplib.org/manual/Integer-Comparisons
+ jgmpfn(mpz_cmp_si, (int (*)(const __mpz_struct *, mpir_si)));       // https://gmplib.org/manual/Integer-Comparisons
+ jgmpfn(mpz_fac_ui, (void (*)(__mpz_struct *, mpir_ui)));       // https://gmplib.org/manual/Number-Theoretic-Functions
+ jgmpfn(mpz_fdiv_q, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));       // https://gmplib.org/manual/Integer-Division
+ jgmpfn(mpz_fdiv_qr, (void (*)(__mpz_struct *, __mpz_struct *, const __mpz_struct *, const __mpz_struct *)));      // https://gmplib.org/manual/Integer-Division
+ jgmpfn(mpz_fdiv_qr_ui, (void (*)(__mpz_struct *, __mpz_struct *, const __mpz_struct *, mpir_ui)));   // https://gmplib.org/manual/Integer-Division
+ jgmpfn(mpz_fdiv_r, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));       // https://gmplib.org/manual/Integer-Division
+ jgmpfn(mpz_gcd, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Number-Theoretic-Functions
+ jgmpfn(mpz_get_d, (D (*)(const __mpz_struct *)));        // https://gmplib.org/manual/Converting-Integers
+ jgmpfn(mpz_get_d_2exp, (D (*)(long int *, const __mpz_struct *)));   // https://gmplib.org/manual/Converting-Integers
+ jgmpfn(mpz_get_str, (C * (*)(C *, int,  const __mpz_struct *)));      // https://gmplib.org/manual/Converting-Integers
+ jgmpfn(mpz_get_si, );// cast ok       // https://gmplib.org/manual/Converting-Integers
+ jgmpfn(mpz_init, (void (*)(__mpz_struct *)));         // https://gmplib.org/manual/Initializing-Integers
+ jgmpfn(mpz_init_set_d, (void (*)(__mpz_struct *, D)));   // https://gmplib.org/manual/Simultaneous-Integer-Init-_0026-Assign
+ jgmpfn(mpz_init_set_str, (int (*)(__mpz_struct *, C *, int))); // https://gmplib.org/manual/Simultaneous-Integer-Init-_0026-Assign
+ jgmpfn(mpz_init_set_si, (void (*)(__mpz_struct *, mpir_si)));  // https://gmplib.org/manual/Simultaneous-Integer-Init-_0026-Assign
+ jgmpfn(mpz_lcm, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Number-Theoretic-Functions
+ jgmpfn(mpz_mul, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Integer-Arithmetic
+ jgmpfn(mpz_neg, (void (*)(__mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Integer-Arithmetic
+ jgmpfn(mpz_out_str, (void (*)(FILE *, int,  const __mpz_struct *)));      // (for debugging) https://gmplib.org/manual/I_002fO-of-Integers
+ jgmpfn(mpz_powm, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *, const __mpz_struct *)));         // https://gmplib.org/manual/Integer-Exponentiation
+ jgmpfn(mpz_pow_ui, (void (*)(__mpz_struct *, const __mpz_struct *, mpir_ui)));       // https://gmplib.org/manual/Integer-Exponentiation
+ jgmpfn(mpz_probab_prime_p, (int (*)(const __mpz_struct *, int)));//https://gmplib.org/manual/Number-Theoretic-Functions
+ jgmpfn(mpz_ui_pow_ui, (void (*)(__mpz_struct *, mpir_ui,  mpir_ui)));    // https://gmplib.org/manual/Integer-Exponentiation
+ jgmpfn(mpz_root, (int (*)(__mpz_struct *, const __mpz_struct *, mpir_ui)));         // https://gmplib.org/manual/Integer-Roots
+ jgmpfn(mpz_set, (void (*)(__mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Assigning-Integers
 // not used jgmpfn(mpz_set_si);       // https://gmplib.org/manual/Assigning-Integers
- jgmpfn(mpz_sizeinbase);   // https://gmplib.org/manual/Miscellaneous-Integer-Functions
- jgmpfn(mpz_sub);          // https://gmplib.org/manual/Integer-Arithmetic
+ jgmpfn(mpz_sizeinbase, (size_t (*)(const __mpz_struct *, int)));   // https://gmplib.org/manual/Miscellaneous-Integer-Functions
+ jgmpfn(mpz_sub, (void (*)(__mpz_struct *, const __mpz_struct *, const __mpz_struct *)));          // https://gmplib.org/manual/Integer-Arithmetic
 #endif
 }
