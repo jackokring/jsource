@@ -811,8 +811,9 @@ static int
 elf_is_symlink (const char *filename)
 {
   struct stat st;
-
+#ifndef _WIN32
   if (lstat (filename, &st) < 0)
+#endif
     return 0;
   return S_ISLNK (st.st_mode);
 }
@@ -837,7 +838,12 @@ elf_readlink (struct backtrace_state *state, const char *filename,
       buf = backtrace_alloc (state, len, error_callback, data);
       if (buf == NULL)
 	return NULL;
+#ifndef _WIN32
       rl = readlink (filename, buf, len);
+#else
+      // as reading a link no appear possible
+			return NULL;
+#endif
       if (rl < 0)
 	{
 	  backtrace_free (state, buf, len, error_callback, data);
