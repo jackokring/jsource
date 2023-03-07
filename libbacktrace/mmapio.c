@@ -34,7 +34,11 @@ POSSIBILITY OF SUCH DAMAGE.  */
 
 #include <errno.h>
 #include <sys/types.h>
+#ifdef _WIN32
+#include "../../mman-win32/mman.h"
+#else
 #include <sys/mman.h>
+#endif
 #include <unistd.h>
 
 #include "backtrace.h"

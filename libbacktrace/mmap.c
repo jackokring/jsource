@@ -37,7 +37,11 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#ifdef _WIN32
+#include "../../mman-win32/mman.h"
+#else
 #include <sys/mman.h>
+#endif
 
 #include "backtrace.h"
 #include "internal.h"
