@@ -711,8 +711,8 @@ case $jplatform64 in
    DLLOBJS=" jdll.o "
    LIBJDEF=" ../../../../dllsrc/jdll2.def "
   fi
-  # LIBJRES=" jdllres.o "
-  LIBJRES=" "
+  LIBJRES=" jdllres.o "
+  # LIBJRES=" " resource compiler
   OBJS_AESNI=" aes-ni.o "
   SRC_ASM="${SRC_ASM_WIN}"
   OBJS_ASM="${OBJS_ASM_WIN}"
