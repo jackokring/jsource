@@ -4,6 +4,9 @@ ifndef jplatform64
 jplatform64=linux/j64x
 endif
 
+# maybe this is the right resource compilier?
+WINDRES = x86_64-w64-mingw32-windres
+
 ODIR=../../../../bin/$(jplatform64)
 
 .SUFFIXES: .o
